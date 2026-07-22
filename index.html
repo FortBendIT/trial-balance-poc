@@ -200,7 +200,7 @@
    Data model persisted to localStorage.
    ============================================================ */
 const store = {
-  key:'atb_internal_v1',
+  key:'atb_internal_v2',
   load(){
     try{ return JSON.parse(localStorage.getItem(this.key)) || null }catch(e){ return null }
   },
@@ -215,14 +215,39 @@ const num = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); ret
 
 /* -------- seed data (generic demo client) -------- */
 function seed(){
-  const tbId = uid();
+  const tb0=uid(), tbA=uid(), tbB=uid(), tbC=uid();
   return {
     activeClient:'c1',
-    clients:[{
-      id:'c1', name:'Sample Client, LLC', activeTB:tbId,
-      trialBalances:[ demoTB(tbId,'FY2025 Audit','2025-12-31') ]
-    }]
+    clients:[
+      { id:'c1', name:'Sample Client, LLC', activeTB:tb0,
+        trialBalances:[ demoTB(tb0,'FY2025 Audit','2025-12-31') ] },
+      { id:uid(), name:'Client A', activeTB:tbA,
+        trialBalances:[ demoTB(tbA,'FY2025 Audit','2025-12-31') ] },
+      { id:uid(), name:'Client B', activeTB:tbB,
+        trialBalances:[ starterTB(tbB,'FY2025 Engagement','2025-12-31') ] },
+      { id:uid(), name:'Client C', activeTB:tbC,
+        trialBalances:[ emptyTB(tbC,'FY2025 Engagement','2025-12-31') ] }
+    ]
   };
+}
+function starterTB(id,name,date){
+  const A=(number,nm,type,group)=>({id:uid(),number,name:nm,type,unadj:0,prior:0,group});
+  return {
+    id, name, periodEnd:date, notes:'',
+    accounts:[
+      A('1000','Cash','Asset','Current Assets'),
+      A('1200','Accounts Receivable','Asset','Current Assets'),
+      A('1500','Fixed Assets','Asset','Fixed Assets'),
+      A('2000','Accounts Payable','Liability','Current Liabilities'),
+      A('3000','Equity','Equity','Equity'),
+      A('4000','Revenue','Revenue','Revenue'),
+      A('5000','Operating Expenses','Expense','Operating Expenses')
+    ],
+    journal:[], industry:{}
+  };
+}
+function emptyTB(id,name,date){
+  return { id, name, periodEnd:date, notes:'', accounts:[], journal:[], industry:{} };
 }
 function demoTB(id,name,date){
   const A=(number,nm,type,unadj,prior,group)=>({id:uid(),number,name:nm,type,unadj,prior,group});
