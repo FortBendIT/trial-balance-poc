@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accountant's Trial Balance</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#ffffff; --ink:#1e293b; --muted:#64748b;
+    --line:#e2e8f0; --brand:#0d6e6e; --brand-d:#0a5555; --accent:#2563eb;
+    --ok:#16a34a; --warn:#dc2626; --amber:#d97706; --chip:#f1f5f9;
+    --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:#f8fafc;font-size:14px}
+  button{font-family:inherit;cursor:pointer}
+  input,select,textarea{font-family:inherit;font-size:14px}
+  h1,h2,h3{margin:0}
+  a{color:var(--accent);text-decoration:none}
+
+  /* Top bar */
+  header{background:var(--bg);color:#fff;display:flex;align-items:center;gap:16px;
+    padding:10px 18px;position:sticky;top:0;z-index:40;box-shadow:var(--shadow)}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap}
+  .logo .mark{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--brand),#14b8a6);
+    display:grid;place-items:center;font-weight:800;color:#fff;font-size:15px}
+  .logo small{display:block;font-weight:500;font-size:10px;color:#94a3b8;letter-spacing:.5px}
+  header .spacer{flex:1}
+  .selwrap{display:flex;align-items:center;gap:6px}
+  .selwrap label{font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
+  header select{background:#1e293b;color:#fff;border:1px solid #334155;border-radius:6px;padding:6px 8px;min-width:150px}
+  .topbtn{background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:6px;padding:7px 11px;font-size:13px}
+  .topbtn:hover{background:#334155}
+
+  /* Layout */
+  .wrap{display:flex;min-height:calc(100vh - 52px)}
+  nav.side{width:210px;background:#fff;border-right:1px solid var(--line);padding:12px;flex-shrink:0}
+  nav.side .tabbtn{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:none;border:none;
+    padding:9px 11px;border-radius:7px;color:var(--ink);font-size:13.5px;margin-bottom:2px;font-weight:500}
+  nav.side .tabbtn:hover{background:var(--chip)}
+  nav.side .tabbtn.active{background:var(--brand);color:#fff}
+  nav.side .tabbtn .ic{width:18px;text-align:center}
+  nav.side .navlabel{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);
+    margin:14px 8px 6px}
+  main{flex:1;padding:20px 26px;overflow:auto;max-width:100%}
+
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;gap:16px;flex-wrap:wrap}
+  .page-head h2{font-size:20px}
+  .page-head .sub{color:var(--muted);font-size:12.5px;margin-top:3px}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  .btn{background:var(--brand);color:#fff;border:none;border-radius:7px;padding:8px 13px;font-size:13px;font-weight:600}
+  .btn:hover{background:var(--brand-d)}
+  .btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.sec:hover{background:var(--chip)}
+  .btn.danger{background:#fff;color:var(--warn);border:1px solid #fecaca}
+  .btn.danger:hover{background:#fef2f2}
+  .btn.sm{padding:5px 9px;font-size:12px}
+
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);margin-bottom:18px}
+  .card .hd{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .card .bd{padding:16px}
+  .card .bd.flush{padding:0}
+
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px}
+  th{background:#f8fafc;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);font-weight:600;position:sticky;top:0}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:"SF Mono",ui-monospace,Menlo,Consolas,monospace}
+  tr:hover td{background:#fafcff}
+  tbody tr:last-child td{border-bottom:none}
+  .row-act{opacity:0;transition:.1s}
+  tr:hover .row-act{opacity:1}
+  .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:var(--chip);color:var(--muted)}
+  .tag.asset{background:#eff6ff;color:#2563eb}
+  .tag.liability{background:#fef3f2;color:#dc2626}
+  .tag.equity{background:#f5f3ff;color:#7c3aed}
+  .tag.revenue{background:#ecfdf5;color:#16a34a}
+  .tag.expense{background:#fff7ed;color:#d97706}
+
+  .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px 16px;flex:1;min-width:150px;box-shadow:var(--shadow)}
+  .stat .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .stat .val{font-size:22px;font-weight:700;margin-top:4px;font-variant-numeric:tabular-nums}
+  .stat .val.small{font-size:16px}
+  .balchip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
+  .balchip.ok{background:#ecfdf5;color:var(--ok)}
+  .balchip.bad{background:#fef2f2;color:var(--warn)}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:40px 16px;overflow:auto}
+  .modal-bg.show{display:flex}
+  .modal{background:#fff;border-radius:14px;width:100%;max-width:560px;box-shadow:0 20px 40px rgba(0,0,0,.25)}
+  .modal.wide{max-width:820px}
+  .modal .mhd{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .modal .mhd h3{font-size:16px}
+  .modal .mbd{padding:20px}
+  .modal .mft{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px}
+  .x{background:none;border:none;font-size:22px;color:var(--muted);line-height:1}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px}
+  .field input,.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px rgba(13,110,110,.12)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+
+  /* JE lines */
+  .je-line{display:grid;grid-template-columns:2fr 1fr 1fr 30px;gap:8px;margin-bottom:7px;align-items:center}
+  .je-line input,.je-line select{padding:7px 9px}
+  .je-foot{display:flex;justify-content:flex-end;gap:24px;padding-top:8px;border-top:1px dashed var(--line);margin-top:6px;font-variant-numeric:tabular-nums}
+
+  .empty{text-align:center;padding:50px 20px;color:var(--muted)}
+  .empty .big{font-size:40px;margin-bottom:8px;opacity:.5}
+  .muted{color:var(--muted)}
+  .right{text-align:right}
+  .pill-tabs{display:flex;gap:4px;background:var(--chip);padding:4px;border-radius:9px;margin-bottom:16px;flex-wrap:wrap}
+  .pill-tabs button{border:none;background:none;padding:7px 13px;border-radius:6px;font-size:13px;font-weight:600;color:var(--muted)}
+  .pill-tabs button.active{background:#fff;color:var(--brand);box-shadow:var(--shadow)}
+  .inline-edit{border:1px solid transparent;background:none;padding:4px 6px;border-radius:5px;width:100%;text-align:right;font-variant-numeric:tabular-nums;font-family:"SF Mono",ui-monospace,Menlo,monospace}
+  .inline-edit:hover{border-color:var(--line)}
+  .inline-edit:focus{outline:none;border-color:var(--brand);background:#fff}
+  .ratio-good{color:var(--ok);font-weight:600}
+  .ratio-bad{color:var(--warn);font-weight:600}
+  .fs-line{display:flex;justify-content:space-between;padding:5px 0;font-variant-numeric:tabular-nums}
+  .fs-line.total{border-top:2px solid var(--ink);font-weight:700;margin-top:6px;padding-top:8px}
+  .fs-line.sub{border-top:1px solid var(--line);font-weight:600;margin-top:4px;padding-top:6px}
+  .fs-head{font-weight:700;font-size:15px;margin:18px 0 6px}
+  .fs-cat{font-weight:600;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.5px;margin:12px 0 4px}
+  @media print{
+    header,nav.side,.toolbar,.page-head .toolbar,.no-print{display:none!important}
+    main{padding:0}.card{box-shadow:none;border:none}
+    body{background:#fff}
+  }
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:11px 18px;border-radius:9px;font-size:13px;z-index:100;opacity:0;transition:.2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .finding{display:flex;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:flex-start}
+  .finding:last-child{border-bottom:none}
+  .sev{flex-shrink:0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:5px;margin-top:1px}
+  .sev.high{background:#fef2f2;color:#dc2626}
+  .sev.med{background:#fff7ed;color:#d97706}
+  .sev.info{background:#eff6ff;color:#2563eb}
+  .finding .ftext{flex:1;font-size:13px}
+  .finding .ftext b{font-weight:600}
+  .finding .facct{font-size:12px;color:var(--muted);margin-top:2px}
+  .ai-out{white-space:pre-wrap;font-size:13.5px;line-height:1.55;padding:16px;background:#fafcff;border:1px solid var(--line);border-radius:9px;max-height:520px;overflow:auto}
+  .keyrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .keyrow input,.keyrow select{padding:8px 10px;border:1px solid var(--line);border-radius:7px}
+  .notice{font-size:12px;background:#fffbeb;border:1px solid #fde68a;color:#92400e;padding:10px 12px;border-radius:8px;margin-bottom:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">
+    <div class="mark">TB</div>
+    <div>Accountant's Trial Balance<small>INTERNAL EDITION</small></div>
+  </div>
+  <div class="spacer"></div>
+  <div class="selwrap">
+    <label>Client</label>
+    <select id="clientSel" onchange="App.switchClient(this.value)"></select>
+    <button class="topbtn" onclick="App.newClient()" title="New client">+</button>
+  </div>
+  <div class="selwrap">
+    <label>Trial Balance</label>
+    <select id="tbSel" onchange="App.switchTB(this.value)"></select>
+    <button class="topbtn" onclick="App.newTB()" title="New / copy trial balance">+</button>
+  </div>
+  <button class="topbtn" onclick="App.backup()" title="Backup all data to file">⭳ Backup</button>
+  <button class="topbtn" onclick="document.getElementById('restoreFile').click()" title="Restore from backup">⭱ Restore</button>
+  <input type="file" id="restoreFile" accept=".json" style="display:none" onchange="App.restore(event)">
+</header>
+
+<div class="wrap">
+  <nav class="side">
+    <div class="navlabel">Engagement</div>
+    <button class="tabbtn active" data-tab="accounts" onclick="App.tab('accounts')"><span class="ic">▤</span> Chart of Accounts</button>
+    <button class="tabbtn" data-tab="journal" onclick="App.tab('journal')"><span class="ic">✎</span> Journal Entries</button>
+    <button class="tabbtn" data-tab="grouping" onclick="App.tab('grouping')"><span class="ic">⊞</span> Account Grouping</button>
+    <div class="navlabel">Analysis</div>
+    <button class="tabbtn" data-tab="ratios" onclick="App.tab('ratios')"><span class="ic">📊</span> Analytical Procedures</button>
+    <button class="tabbtn" data-tab="review" onclick="App.tab('review')"><span class="ic">🔍</span> Anomaly Review</button>
+    <button class="tabbtn" data-tab="reports" onclick="App.tab('reports')"><span class="ic">▦</span> Trial Balance Report</button>
+    <button class="tabbtn" data-tab="statements" onclick="App.tab('statements')"><span class="ic">§</span> Financial Statements</button>
+    <div class="navlabel">Data</div>
+    <button class="tabbtn" data-tab="io" onclick="App.tab('io')"><span class="ic">⇄</span> Import / Export</button>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<!-- Generic modal host -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)App.closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Accountant's Trial Balance — internal single-file app
+   Data model persisted to localStorage.
+   ============================================================ */
+const store = {
+  key:'atb_internal_v1',
+  load(){
+    try{ return JSON.parse(localStorage.getItem(this.key)) || null }catch(e){ return null }
+  },
+  save(d){ localStorage.setItem(this.key, JSON.stringify(d)) }
+};
+
+const ACCT_TYPES = ['Asset','Liability','Equity','Revenue','Expense'];
+const NORMAL_DEBIT = {Asset:1, Expense:1, Liability:-1, Equity:-1, Revenue:-1};
+const money = n => (n<0?'(' : '') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + (n<0?')':'');
+const uid = () => Math.random().toString(36).slice(2,9);
+const num = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
+
+/* -------- seed data (generic demo client) -------- */
+function seed(){
+  const tbId = uid();
+  return {
+    activeClient:'c1',
+    clients:[{
+      id:'c1', name:'Sample Client, LLC', activeTB:tbId,
+      trialBalances:[ demoTB(tbId,'FY2025 Audit','2025-12-31') ]
+    }]
+  };
+}
+function demoTB(id,name,date){
+  const A=(number,nm,type,unadj,prior,group)=>({id:uid(),number,name:nm,type,unadj,prior,group});
+  return {
+    id, name, periodEnd:date, notes:'',
+    accounts:[
+      A('1000','Cash - Operating','Asset',185400,142300,'Current Assets'),
+      A('1050','Cash - Money Market','Asset',96000,88000,'Current Assets'),
+      A('1200','Accounts Receivable','Asset',48200,51900,'Current Assets'),
+      A('1250','Allowance for Doubtful Accounts','Asset',-3500,-3800,'Current Assets'),
+      A('1400','Prepaid Expenses','Asset',12750,9600,'Current Assets'),
+      A('1500','Equipment','Asset',210000,210000,'Fixed Assets'),
+      A('1550','Accumulated Depreciation','Asset',-84000,-63000,'Fixed Assets'),
+      A('2000','Accounts Payable','Liability',-37800,-29400,'Current Liabilities'),
+      A('2100','Accrued Liabilities','Liability',-15600,-12100,'Current Liabilities'),
+      A('2200','Notes Payable - Current','Liability',-24000,-24000,'Current Liabilities'),
+      A('2500','Notes Payable - Long Term','Liability',-96000,-120000,'Long-Term Liabilities'),
+      A('3000','Common Stock','Equity',-50000,-50000,'Equity'),
+      A('3100','Retained Earnings','Equity',-74950,-61000,'Equity'),
+      A('4000','Service Revenue','Revenue',-612000,-548000,'Revenue'),
+      A('4100','Other Income','Revenue',-8400,-6200,'Revenue'),
+      A('5000','Salaries & Wages','Expense',298000,271000,'Operating Expenses'),
+      A('5100','Payroll Taxes','Expense',24300,22100,'Operating Expenses'),
+      A('5200','Rent','Expense',48000,46000,'Operating Expenses'),
+      A('5300','Utilities','Expense',14600,13800,'Operating Expenses'),
+      A('5400','Depreciation Expense','Expense',21000,21000,'Operating Expenses'),
+      A('5500','Insurance','Expense',18900,17200,'Operating Expenses'),
+      A('5600','Professional Fees','Expense',22000,15400,'Operating Expenses'),
+      A('5900','Interest Expense','Expense',7100,9200,'Other Expenses')
+    ],
+    journal:[
+      {id:uid(), ref:'AJE-1', date:date, memo:'Record additional depreciation', lines:[
+        {acct:'5400', dr:3000, cr:0},{acct:'1550', dr:0, cr:3000}
+      ]}
+    ],
+    industry:{ current:1.9, quick:1.2, de:0.65, gm:0, netmargin:0.12 }
+  };
+}
+
+/* ============================================================ */
+const App = {
+  data:null, curTab:'accounts', groupTab:null,
+
+  init(){
+    this.data = store.load() || seed();
+    this.renderSelectors();
+    this.tab('accounts');
+  },
+  persist(){ store.save(this.data); },
+
+  client(){ return this.data.clients.find(c=>c.id===this.data.activeClient); },
+  tbObj(){ const c=this.client(); return c.trialBalances.find(t=>t.id===c.activeTB) || c.trialBalances[0]; },
+
+  renderSelectors(){
+    const cs=document.getElementById('clientSel');
+    cs.innerHTML=this.data.clients.map(c=>`<option value="${c.id}" ${c.id===this.data.activeClient?'selected':''}>${esc(c.name)}</option>`).join('');
+    const c=this.client();
+    const ts=document.getElementById('tbSel');
+    ts.innerHTML=c.trialBalances.map(t=>`<option value="${t.id}" ${t.id===c.activeTB?'selected':''}>${esc(t.name)}</option>`).join('');
+  },
+  switchClient(id){ this.data.activeClient=id; this.persist(); this.renderSelectors(); this.tab(this.curTab); },
+  switchTB(id){ this.client().activeTB=id; this.persist(); this.renderSelectors(); this.tab(this.curTab); },
+
+  tab(name){
+    this.curTab=name;
+    document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+    ({accounts:this.viewAccounts, journal:this.viewJournal, grouping:this.viewGrouping,
+      ratios:this.viewRatios, review:this.viewReview, reports:this.viewReports, statements:this.viewStatements,
+      io:this.viewIO})[name].call(this);
+  },
+
+  /* ---------- computed balances ---------- */
+  adjustments(number){
+    const tb=this.tbObj(); let d=0,c=0;
+    tb.journal.forEach(je=>je.lines.forEach(l=>{ if(l.acct===number){ d+=num(l.dr); c+=num(l.cr); }}));
+    return {dr:d, cr:c, net:d-c};
+  },
+  adjusted(a){ return a.unadj + this.adjustments(a.number).net; },
+  // signed for statement math: debit-normal accounts positive when debit
+  signedAdjusted(a){ return this.adjusted(a); },
+
+  totals(){
+    const tb=this.tbObj(); let unadjDr=0,unadjCr=0,adjDr=0,adjCr=0,ajeDr=0,ajeCr=0;
+    tb.accounts.forEach(a=>{
+      const u=a.unadj, adj=this.adjusted(a);
+      if(u>=0){unadjDr+=u}else{unadjCr+=-u}
+      if(adj>=0){adjDr+=adj}else{adjCr+=-adj}
+      const x=this.adjustments(a.number); ajeDr+=x.dr; ajeCr+=x.cr;
+    });
+    return {unadjDr,unadjCr,adjDr,adjCr,ajeDr,ajeCr};
+  },
+
+  /* ================= CHART OF ACCOUNTS ================= */
+  viewAccounts(){
+    const tb=this.tbObj(), t=this.totals();
+    const inBal = Math.abs(t.adjDr - t.adjCr) < 0.005;
+    const rows = tb.accounts.map(a=>{
+      const adj=this.adjusted(a), x=this.adjustments(a.number);
+      return `<tr>
+        <td>${esc(a.number)}</td>
+        <td>${esc(a.name)}</td>
+        <td><span class="tag ${a.type.toLowerCase()}">${a.type}</span></td>
+        <td class="num">${money(a.unadj)}</td>
+        <td class="num">${x.net?money(x.net):'<span class="muted">—</span>'}</td>
+        <td class="num"><strong>${money(adj)}</strong></td>
+        <td class="num muted">${money(a.prior)}</td>
+        <td class="right"><span class="row-act">
+          <button class="btn sec sm" onclick="App.editAccount('${a.id}')">Edit</button>
+          <button class="btn danger sm" onclick="App.delAccount('${a.id}')">✕</button>
+        </span></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Chart of Accounts</h2>
+          <div class="sub">${esc(this.client().name)} · ${esc(tb.name)} · Period ending ${esc(tb.periodEnd)}</div></div>
+        <div class="toolbar">
+          <span class="balchip ${inBal?'ok':'bad'}">${inBal?'● In Balance':'● Out of Balance'}</span>
+          <button class="btn sec" onclick="App.editTBMeta()">Edit TB Info</button>
+          <button class="btn" onclick="App.editAccount()">+ Add Account</button>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">Accounts</div><div class="val">${tb.accounts.length}</div></div>
+        <div class="stat"><div class="lbl">Adjusted Debits</div><div class="val small">${money(t.adjDr)}</div></div>
+        <div class="stat"><div class="lbl">Adjusted Credits</div><div class="val small">${money(t.adjCr)}</div></div>
+        <div class="stat"><div class="lbl">Adjusting Entries</div><div class="val">${tb.journal.length}</div></div>
+      </div>
+      <div class="card"><div class="bd flush">
+        <table>
+          <thead><tr>
+            <th>Acct #</th><th>Account Name</th><th>Type</th>
+            <th class="num">Unadjusted</th><th class="num">Adjustments</th>
+            <th class="num">Adjusted</th><th class="num">Prior Year</th><th></th>
+          </tr></thead>
+          <tbody>${rows || `<tr><td colspan="8"><div class="empty"><div class="big">▤</div>No accounts yet. Add one to begin.</div></td></tr>`}</tbody>
+          ${tb.accounts.length?`<tfoot><tr style="background:#f8fafc;font-weight:700">
+            <td colspan="3">Totals</td>
+            <td class="num">${money(t.unadjDr-t.unadjCr)}</td>
+            <td class="num">${money(t.ajeDr-t.ajeCr)}</td>
+            <td class="num">Dr ${money(t.adjDr)} / Cr ${money(t.adjCr)}</td>
+            <td></td><td></td></tr></tfoot>`:''}
+        </table>
+      </div></div>
+      <p class="muted" style="font-size:12px">Balance convention: enter debit balances as positive, credit balances as negative (e.g. Accumulated Depreciation, A/P, Revenue, Equity).</p>
+    `;
+  },
+
+  editAccount(id){
+    const tb=this.tbObj();
+    const a = id ? tb.accounts.find(x=>x.id===id) : {number:'',name:'',type:'Asset',unadj:0,prior:0,group:''};
+    const groups=[...new Set(tb.accounts.map(x=>x.group).filter(Boolean))];
+    this.modal(`${id?'Edit':'Add'} Account`, `
+      <div class="grid2">
+        <div class="field"><label>Account Number</label><input id="f_number" value="${esc(a.number)}" placeholder="1000"></div>
+        <div class="field"><label>Type</label><select id="f_type">${ACCT_TYPES.map(t=>`<option ${t===a.type?'selected':''}>${t}</option>`).join('')}</select></div>
+      </div>
+      <div class="field"><label>Account Name</label><input id="f_name" value="${esc(a.name)}" placeholder="Cash - Operating"></div>
+      <div class="grid2">
+        <div class="field"><label>Unadjusted Balance</label><input id="f_unadj" value="${a.unadj}" placeholder="0.00"></div>
+        <div class="field"><label>Prior Year Balance</label><input id="f_prior" value="${a.prior}" placeholder="0.00"></div>
+      </div>
+      <div class="field"><label>Grouping / Category</label>
+        <input id="f_group" list="grouplist" value="${esc(a.group||'')}" placeholder="Current Assets">
+        <datalist id="grouplist">${groups.map(g=>`<option value="${esc(g)}">`).join('')}</datalist>
+      </div>
+    `, [
+      {label:'Cancel', cls:'sec', fn:()=>this.closeModal()},
+      {label:'Save', cls:'', fn:()=>{
+        const number=val('f_number').trim(), name=val('f_name').trim();
+        if(!number||!name){ toast('Account number and name required'); return; }
+        const rec={number, name, type:val('f_type'), unadj:num(val('f_unadj')), prior:num(val('f_prior')), group:val('f_group').trim()};
+        if(id){ Object.assign(a, rec); } else { tb.accounts.push({id:uid(),...rec}); }
+        tb.accounts.sort((x,y)=>String(x.number).localeCompare(String(y.number),undefined,{numeric:true}));
+        this.persist(); this.closeModal(); this.viewAccounts();
+      }}
+    ]);
+  },
+  delAccount(id){
+    const tb=this.tbObj(); const a=tb.accounts.find(x=>x.id===id);
+    const used=tb.journal.some(je=>je.lines.some(l=>l.acct===a.number));
+    if(used && !confirm('This account is referenced by journal entries. Delete anyway?')) return;
+    if(!used && !confirm('Delete account '+a.number+' '+a.name+'?')) return;
+    tb.accounts=tb.accounts.filter(x=>x.id!==id); this.persist(); this.viewAccounts();
+  },
+
+  editTBMeta(){
+    const tb=this.tbObj();
+    this.modal('Trial Balance Info',`
+      <div class="field"><label>Name</label><input id="f_tbname" value="${esc(tb.name)}"></div>
+      <div class="field"><label>Period Ending</label><input id="f_tbdate" type="date" value="${esc(tb.periodEnd)}"></div>
+      <div class="field"><label>Notes</label><textarea id="f_tbnotes" rows="3">${esc(tb.notes||'')}</textarea></div>
+    `,[
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:'Save',cls:'',fn:()=>{
+        tb.name=val('f_tbname').trim()||tb.name; tb.periodEnd=val('f_tbdate'); tb.notes=val('f_tbnotes');
+        this.persist(); this.closeModal(); this.renderSelectors(); this.viewAccounts();
+      }}
+    ]);
+  },
+
+  /* ================= JOURNAL ENTRIES ================= */
+  viewJournal(){
+    const tb=this.tbObj();
+    const rows=tb.journal.map(je=>{
+      let dr=0,cr=0; je.lines.forEach(l=>{dr+=num(l.dr);cr+=num(l.cr)});
+      const bal=Math.abs(dr-cr)<0.005;
+      const lines=je.lines.map(l=>{
+        const a=tb.accounts.find(x=>x.number===l.acct);
+        return `<div style="display:flex;justify-content:space-between;padding:2px 0;font-size:12.5px">
+          <span>${esc(l.acct)} · ${esc(a?a.name:'?')}</span>
+          <span class="num" style="min-width:200px;text-align:right">${num(l.dr)?money(num(l.dr)):''}${num(l.cr)?'&nbsp;&nbsp;&nbsp;'+money(num(l.cr)):''}</span>
+        </div>`;
+      }).join('');
+      return `<div class="card"><div class="hd">
+          <span>${esc(je.ref)} · <span class="muted">${esc(je.date)}</span></span>
+          <span>${bal?'<span class="balchip ok">● Balanced</span>':'<span class="balchip bad">● Unbalanced</span>'}
+            <button class="btn sec sm" onclick="App.editJE('${je.id}')">Edit</button>
+            <button class="btn danger sm" onclick="App.delJE('${je.id}')">✕</button></span>
+        </div><div class="bd">
+          <div class="muted" style="margin-bottom:8px">${esc(je.memo||'')}</div>
+          ${lines}
+          <div class="je-foot"><span>Dr ${money(dr)}</span><span>Cr ${money(cr)}</span></div>
+        </div></div>`;
+    }).join('');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Journal Entries</h2><div class="sub">Adjusting &amp; reclassifying entries applied to the trial balance</div></div>
+        <div class="toolbar"><button class="btn" onclick="App.editJE()">+ New Entry</button></div>
+      </div>
+      ${rows || `<div class="card"><div class="bd"><div class="empty"><div class="big">✎</div>No journal entries. Add adjusting entries here.</div></div></div>`}
+    `;
+  },
+
+  editJE(id){
+    const tb=this.tbObj();
+    const je = id ? JSON.parse(JSON.stringify(tb.journal.find(x=>x.id===id)))
+                  : {ref:'AJE-'+(tb.journal.length+1), date:tb.periodEnd, memo:'', lines:[{acct:'',dr:0,cr:0},{acct:'',dr:0,cr:0}]};
+    this._jeEdit=je;
+    const opts=tb.accounts.map(a=>`<option value="${esc(a.number)}">${esc(a.number)} · ${esc(a.name)}</option>`).join('');
+    const lineHtml=(l,i)=>`<div class="je-line" data-i="${i}">
+      <select onchange="App._jeEdit.lines[${i}].acct=this.value"><option value="">— account —</option>${opts.replace(`value="${esc(l.acct)}"`,`value="${esc(l.acct)}" selected`)}</select>
+      <input placeholder="Debit" value="${l.dr||''}" oninput="App._jeEdit.lines[${i}].dr=this.value;App._jeSums()">
+      <input placeholder="Credit" value="${l.cr||''}" oninput="App._jeEdit.lines[${i}].cr=this.value;App._jeSums()">
+      <button class="x" onclick="App._jeDel(${i})">×</button>
+    </div>`;
+    this.modal(`${id?'Edit':'New'} Journal Entry`,`
+      <div class="grid3">
+        <div class="field"><label>Reference</label><input id="f_ref" value="${esc(je.ref)}"></div>
+        <div class="field"><label>Date</label><input id="f_date" type="date" value="${esc(je.date)}"></div>
+        <div class="field"><label>&nbsp;</label></div>
+      </div>
+      <div class="field"><label>Memo</label><input id="f_memo" value="${esc(je.memo||'')}" placeholder="Description of entry"></div>
+      <div class="field"><label>Lines</label>
+        <div class="je-line" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px">
+          <span>Account</span><span>Debit</span><span>Credit</span><span></span></div>
+        <div id="jeLines">${je.lines.map(lineHtml).join('')}</div>
+        <button class="btn sec sm" style="margin-top:6px" onclick="App._jeAdd()">+ Add line</button>
+        <div class="je-foot" id="jeSums"></div>
+      </div>
+    `,[
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:'Save Entry',cls:'',fn:()=>{
+        const je=this._jeEdit;
+        je.ref=val('f_ref').trim()||je.ref; je.date=val('f_date'); je.memo=val('f_memo');
+        je.lines=je.lines.filter(l=>l.acct && (num(l.dr)||num(l.cr)));
+        let dr=0,cr=0; je.lines.forEach(l=>{dr+=num(l.dr);cr+=num(l.cr)});
+        if(!je.lines.length){ toast('Add at least one line'); return; }
+        if(Math.abs(dr-cr)>=0.005){ if(!confirm(`Entry does not balance (Dr ${money(dr)} vs Cr ${money(cr)}). Save anyway?`)) return; }
+        if(id){ const idx=tb.journal.findIndex(x=>x.id===id); je.id=id; tb.journal[idx]=je; }
+        else { je.id=uid(); tb.journal.push(je); }
+        this.persist(); this.closeModal(); this.viewJournal();
+      }}
+    ]);
+    this._jeSums();
+  },
+  _jeAdd(){ this._jeEdit.lines.push({acct:'',dr:0,cr:0}); this._jeRerender(); },
+  _jeDel(i){ this._jeEdit.lines.splice(i,1); if(!this._jeEdit.lines.length)this._jeEdit.lines.push({acct:'',dr:0,cr:0}); this._jeRerender(); },
+  _jeRerender(){ const id=this._jeEditId; this.closeModal(); /* rebuild */
+    // simplest: re-open editor preserving edits
+    const tb=this.tbObj(); const je=this._jeEdit;
+    // reuse editJE rendering by temporarily storing
+    this._reopenJE(je);
+  },
+  _reopenJE(je){
+    const tb=this.tbObj();
+    const opts=tb.accounts.map(a=>`<option value="${esc(a.number)}">${esc(a.number)} · ${esc(a.name)}</option>`).join('');
+    const lineHtml=(l,i)=>`<div class="je-line" data-i="${i}">
+      <select onchange="App._jeEdit.lines[${i}].acct=this.value"><option value="">— account —</option>${opts.replace(`value="${esc(l.acct)}"`,`value="${esc(l.acct)}" selected`)}</select>
+      <input placeholder="Debit" value="${l.dr||''}" oninput="App._jeEdit.lines[${i}].dr=this.value;App._jeSums()">
+      <input placeholder="Credit" value="${l.cr||''}" oninput="App._jeEdit.lines[${i}].cr=this.value;App._jeSums()">
+      <button class="x" onclick="App._jeDel(${i})">×</button></div>`;
+    document.getElementById('jeLines').innerHTML=je.lines.map(lineHtml).join('');
+    this._jeSums();
+  },
+  _jeSums(){
+    const je=this._jeEdit; let dr=0,cr=0; je.lines.forEach(l=>{dr+=num(l.dr);cr+=num(l.cr)});
+    const el=document.getElementById('jeSums'); if(!el)return;
+    const bal=Math.abs(dr-cr)<0.005;
+    el.innerHTML=`<span>Dr ${money(dr)}</span><span>Cr ${money(cr)}</span>
+      <span class="${bal?'ratio-good':'ratio-bad'}">${bal?'Balanced':'Diff '+money(dr-cr)}</span>`;
+  },
+  delJE(id){ const tb=this.tbObj(); if(!confirm('Delete this journal entry?'))return;
+    tb.journal=tb.journal.filter(x=>x.id!==id); this.persist(); this.viewJournal(); },
+
+  /* ================= GROUPING ================= */
+  viewGrouping(){
+    const tb=this.tbObj();
+    const groups={};
+    tb.accounts.forEach(a=>{ const g=a.group||'(Unassigned)'; (groups[g]=groups[g]||[]).push(a); });
+    const order=Object.keys(groups).sort();
+    const blocks=order.map(g=>{
+      const list=groups[g];
+      let sum=list.reduce((s,a)=>s+this.adjusted(a),0);
+      const rows=list.map(a=>`<tr>
+        <td>${esc(a.number)}</td><td>${esc(a.name)}</td>
+        <td><span class="tag ${a.type.toLowerCase()}">${a.type}</span></td>
+        <td class="num">${money(this.adjusted(a))}</td>
+        <td class="right"><span class="row-act"><button class="btn sec sm" onclick="App.editAccount('${a.id}')">Move</button></span></td>
+      </tr>`).join('');
+      return `<div class="card"><div class="hd"><span>${esc(g)}</span><span class="num">${money(sum)}</span></div>
+        <div class="bd flush"><table><tbody>${rows}</tbody></table></div></div>`;
+    }).join('');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Account Grouping</h2><div class="sub">Group accounts into categories for statements &amp; ratios. Use “Move” to reassign an account's group.</div></div>
+        <div class="toolbar"><button class="btn sec" onclick="App.tab('accounts')">Manage Accounts</button></div>
+      </div>
+      ${blocks || `<div class="empty"><div class="big">⊞</div>No accounts to group yet.</div>`}
+    `;
+  },
+
+  /* ================= RATIOS ================= */
+  catSum(pred, useAdjusted=true){
+    const tb=this.tbObj(); let s=0;
+    tb.accounts.forEach(a=>{ if(pred(a)){ s += useAdjusted ? this.adjusted(a) : a.prior; }});
+    return s;
+  },
+  ratioSet(useAdjusted){
+    const isG=(a,g)=>(a.group||'').toLowerCase()===g;
+    const curAssets=this.catSum(a=>isG(a,'current assets'),useAdjusted);
+    const curLiab=Math.abs(this.catSum(a=>isG(a,'current liabilities'),useAdjusted));
+    const inv=this.catSum(a=>/inventory/i.test(a.name),useAdjusted);
+    const totLiab=Math.abs(this.catSum(a=>a.type==='Liability',useAdjusted));
+    const totEq=Math.abs(this.catSum(a=>a.type==='Equity',useAdjusted));
+    const rev=Math.abs(this.catSum(a=>a.type==='Revenue',useAdjusted));
+    const exp=this.catSum(a=>a.type==='Expense',useAdjusted);
+    const ni=rev-exp;
+    return {
+      current: curLiab? curAssets/curLiab : 0,
+      quick: curLiab? (curAssets-inv)/curLiab : 0,
+      de: totEq? totLiab/totEq : 0,
+      netmargin: rev? ni/rev : 0,
+      ni, rev
+    };
+  },
+  viewRatios(){
+    const tb=this.tbObj();
+    const cur=this.ratioSet(true), pri=this.ratioSet(false), ind=tb.industry||{};
+    const fmt=(v,pct)=> pct ? (v*100).toFixed(1)+'%' : v.toFixed(2);
+    const row=(name,key,pct,goodHigh)=>{
+      const c=cur[key], p=pri[key], i=ind[key]||0;
+      const delta=p? ((c-p)/Math.abs(p)*100):0;
+      const cls = goodHigh ? (c>=p?'ratio-good':'ratio-bad') : (c<=p?'ratio-good':'ratio-bad');
+      return `<tr>
+        <td><strong>${name}</strong></td>
+        <td class="num ${cls}">${fmt(c,pct)}</td>
+        <td class="num muted">${fmt(p,pct)}</td>
+        <td class="num muted">${i?fmt(i,pct):'—'}</td>
+        <td class="num ${delta>=0?'ratio-good':'ratio-bad'}">${p?(delta>=0?'+':'')+delta.toFixed(1)+'%':'—'}</td>
+      </tr>`;
+    };
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Analytical Procedures</h2><div class="sub">Key ratios: current period vs. prior period vs. industry benchmark</div></div>
+        <div class="toolbar"><button class="btn sec" onclick="App.editIndustry()">Edit Industry Ratios</button></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">Net Income (current)</div><div class="val small">${money(cur.ni)}</div></div>
+        <div class="stat"><div class="lbl">Net Income (prior)</div><div class="val small">${money(pri.ni)}</div></div>
+        <div class="stat"><div class="lbl">Revenue (current)</div><div class="val small">${money(cur.rev)}</div></div>
+      </div>
+      <div class="card"><div class="bd flush"><table>
+        <thead><tr><th>Ratio</th><th class="num">Current</th><th class="num">Prior</th><th class="num">Industry</th><th class="num">Δ vs Prior</th></tr></thead>
+        <tbody>
+          ${row('Current Ratio','current',false,true)}
+          ${row('Quick Ratio','quick',false,true)}
+          ${row('Debt-to-Equity','de',false,false)}
+          ${row('Net Profit Margin','netmargin',true,true)}
+        </tbody>
+      </table></div></div>
+      <p class="muted" style="font-size:12px">Ratios are computed from grouped accounts. Current/Quick ratios require accounts grouped as “Current Assets” / “Current Liabilities”. Green indicates a favorable movement vs. prior period.</p>
+    `;
+  },
+  editIndustry(){
+    const tb=this.tbObj(); const i=tb.industry||{};
+    this.modal('Industry Benchmark Ratios',`
+      <div class="grid2">
+        <div class="field"><label>Current Ratio</label><input id="i_current" value="${i.current||''}"></div>
+        <div class="field"><label>Quick Ratio</label><input id="i_quick" value="${i.quick||''}"></div>
+        <div class="field"><label>Debt-to-Equity</label><input id="i_de" value="${i.de||''}"></div>
+        <div class="field"><label>Net Margin (e.g. 0.12)</label><input id="i_netmargin" value="${i.netmargin||''}"></div>
+      </div>
+    `,[
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:'Save',cls:'',fn:()=>{
+        tb.industry={current:num(val('i_current')),quick:num(val('i_quick')),de:num(val('i_de')),netmargin:num(val('i_netmargin'))};
+        this.persist(); this.closeModal(); this.viewRatios();
+      }}
+    ]);
+  },
+
+  /* ================= ANOMALY REVIEW ================= */
+  aiCfg(){
+    try{ return JSON.parse(localStorage.getItem('atb_ai_cfg')) || {}; }catch(e){ return {}; }
+  },
+  saveAiCfg(c){ localStorage.setItem('atb_ai_cfg', JSON.stringify(c)); },
+
+  computeAnomalies(){
+    const tb=this.tbObj(); const f=[];
+    const cfg=this.aiCfg();
+    const varPct=(cfg.varPct!=null?cfg.varPct:10)/100;
+    const varFloor=cfg.varFloor!=null?cfg.varFloor:1000;
+    const add=(sev,text,acct)=>f.push({sev,text,acct:acct||''});
+    const contra=/allowance|accumulated|deprec|amort|reserve|treasury|contra|discount/i;
+
+    // 1. Out of balance
+    const t=this.totals();
+    if(Math.abs(t.adjDr-t.adjCr)>=0.005)
+      add('high',`Trial balance is <b>out of balance</b> — adjusted debits ${money(t.adjDr)} vs credits ${money(t.adjCr)} (difference ${money(t.adjDr-t.adjCr)}).`);
+
+    // 2. Unbalanced journal entries
+    tb.journal.forEach(je=>{ let d=0,c=0; je.lines.forEach(l=>{d+=num(l.dr);c+=num(l.cr)});
+      if(Math.abs(d-c)>=0.005) add('high',`Journal entry <b>${esc(je.ref)}</b> does not balance (Dr ${money(d)} vs Cr ${money(c)}).`); });
+
+    // 3. Duplicate account numbers
+    const seen={}; tb.accounts.forEach(a=>{ seen[a.number]=(seen[a.number]||0)+1; });
+    Object.keys(seen).filter(n=>seen[n]>1).forEach(n=>add('high',`Duplicate account number <b>${esc(n)}</b> appears ${seen[n]} times.`));
+
+    tb.accounts.forEach(a=>{
+      const adj=this.adjusted(a);
+      const label=`${a.number} · ${a.name}`;
+      // 4. Wrong normal side
+      const isContra=contra.test(a.name);
+      if(!isContra){
+        if(a.type==='Asset' && adj<0) add('med',`<b>${esc(a.name)}</b> is an Asset carrying a credit balance (${money(adj)}). Verify — reclass or contra account?`,label);
+        if(a.type==='Expense' && adj<0) add('med',`<b>${esc(a.name)}</b> is an Expense with a credit balance (${money(adj)}). Unusual for an expense account.`,label);
+        if(['Liability','Equity','Revenue'].includes(a.type) && adj>0) add('med',`<b>${esc(a.name)}</b> (${a.type}) carries a debit balance (${money(adj)}). Verify normal balance.`,label);
+      }
+      // 5. Year-over-year variance
+      if(a.prior!==0){
+        const chg=adj-a.prior; const pct=Math.abs(chg/a.prior);
+        if(pct>=varPct && Math.abs(chg)>=varFloor){
+          const sev = pct>=varPct*3 ? 'high':'med';
+          add(sev,`<b>${esc(a.name)}</b> changed ${(chg>=0?'+':'')}${(chg/a.prior*100).toFixed(0)}% vs prior year (${money(a.prior)} → ${money(adj)}, ${money(chg)}).`,label);
+        }
+      }
+      // 6. New / dropped accounts
+      if(a.prior===0 && adj!==0) add('info',`<b>${esc(a.name)}</b> is <b>new</b> this period (no prior-year balance).`,label);
+      if(a.prior!==0 && Math.abs(adj)<0.005) add('info',`<b>${esc(a.name)}</b> had a prior balance (${money(a.prior)}) but is now zero — account cleared or dropped.`,label);
+      // 7. Unassigned group
+      if(!a.group) add('info',`<b>${esc(a.name)}</b> has no grouping — it will be excluded from grouped statements.`,label);
+      // 8. Suspicious round numbers (material, exact thousands)
+      if(Math.abs(adj)>=10000 && adj%1000===0 && a.type!=='Equity')
+        add('info',`<b>${esc(a.name)}</b> is an exact round number (${money(adj)}) — confirm it is not an estimate or plug.`,label);
+    });
+
+    // 9. Ratio outliers vs industry
+    const ind=tb.industry||{}; const cur=this.ratioSet(true);
+    const band=(name,c,i,tol)=>{ if(i){ const d=Math.abs(c-i)/Math.abs(i); if(d>=tol)
+      add('med',`<b>${name}</b> of ${c.toFixed(2)} deviates ${(d*100).toFixed(0)}% from the industry benchmark (${i.toFixed(2)}).`); } };
+    band('Current ratio',cur.current,ind.current,0.30);
+    band('Quick ratio',cur.quick,ind.quick,0.30);
+    band('Debt-to-equity',cur.de,ind.de,0.40);
+    if(ind.netmargin) band('Net margin',cur.netmargin,ind.netmargin,0.30);
+
+    const order={high:0,med:1,info:2};
+    f.sort((a,b)=>order[a.sev]-order[b.sev]);
+    return f;
+  },
+
+  viewReview(){
+    const tb=this.tbObj();
+    const findings=this.computeAnomalies();
+    const cfg=this.aiCfg();
+    const counts={high:0,med:0,info:0}; findings.forEach(x=>counts[x.sev]++);
+    const list = findings.length ? findings.map(x=>`
+      <div class="finding"><span class="sev ${x.sev}">${x.sev==='med'?'review':x.sev}</span>
+        <div class="ftext">${x.text}${x.acct?`<div class="facct">${esc(x.acct)}</div>`:''}</div></div>`).join('')
+      : `<div class="empty"><div class="big">✓</div>No anomalies detected by the offline rules.</div>`;
+    const provider=cfg.provider||'anthropic';
+    const model=cfg.model||(provider==='anthropic'?'claude-sonnet-5':'gpt-4o');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Anomaly Review</h2><div class="sub">Automated analytical procedures on ${esc(this.client().name)} — ${esc(tb.name)}</div></div>
+        <div class="toolbar">
+          <label class="muted" style="font-size:12px">Variance flag ≥
+            <input id="cfgVar" value="${cfg.varPct!=null?cfg.varPct:10}" style="width:46px;padding:5px;border:1px solid var(--line);border-radius:6px;text-align:right">%</label>
+          <label class="muted" style="font-size:12px">min $
+            <input id="cfgFloor" value="${cfg.varFloor!=null?cfg.varFloor:1000}" style="width:72px;padding:5px;border:1px solid var(--line);border-radius:6px;text-align:right"></label>
+          <button class="btn sec" onclick="App.applyReviewCfg()">Apply</button>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">High priority</div><div class="val" style="color:var(--warn)">${counts.high}</div></div>
+        <div class="stat"><div class="lbl">To review</div><div class="val" style="color:var(--amber)">${counts.med}</div></div>
+        <div class="stat"><div class="lbl">Informational</div><div class="val" style="color:var(--accent)">${counts.info}</div></div>
+        <div class="stat"><div class="lbl">Accounts scanned</div><div class="val">${tb.accounts.length}</div></div>
+      </div>
+      <div class="card"><div class="hd">Offline Findings <span class="muted" style="font-weight:400;font-size:12px">— rules-based, nothing leaves this computer</span></div>
+        <div class="bd flush">${list}</div></div>
+
+      <div class="card"><div class="hd">AI Narrative Review <span class="muted" style="font-weight:400;font-size:12px">— optional, uses Claude or ChatGPT</span></div>
+      <div class="bd">
+        <div class="notice">⚠ Enabling this sends the trial balance figures (account names, current &amp; prior balances, ratios) to ${provider==='anthropic'?'Anthropic':'OpenAI'}'s API. API-tier data is not used for training by default, but confirm this is acceptable under your client engagement / confidentiality terms before using it on live MUD data. Your API key is stored only in this browser's local storage.</div>
+        <div class="keyrow" style="margin-bottom:10px">
+          <select id="aiProvider" onchange="App.onProviderChange()">
+            <option value="anthropic" ${provider==='anthropic'?'selected':''}>Claude (Anthropic)</option>
+            <option value="openai" ${provider==='openai'?'selected':''}>ChatGPT (OpenAI)</option>
+          </select>
+          <input id="aiModel" value="${esc(model)}" placeholder="model" style="width:210px">
+          <input id="aiKey" type="password" value="${esc(cfg.key||'')}" placeholder="API key (sk-... / stored locally)" style="flex:1;min-width:220px">
+          <button class="btn sec" onclick="App.saveKey()">Save Key</button>
+        </div>
+        <div class="toolbar" style="margin-bottom:12px">
+          <button class="btn" onclick="App.runAI()">🔍 Run AI Review</button>
+          <button class="btn sec" onclick="App.copyPrompt()">⧉ Copy prompt (paste into Claude/ChatGPT manually)</button>
+        </div>
+        <div id="aiResult"></div>
+      </div></div>
+      <p class="muted" style="font-size:12px">The offline engine flags out-of-balance conditions, wrong normal balances, year-over-year swings, new/dropped accounts, ratio outliers, round-number plugs, duplicates, and ungrouped accounts. The AI layer adds written interpretation and follow-up questions.</p>
+    `;
+  },
+  applyReviewCfg(){
+    const cfg=this.aiCfg();
+    cfg.varPct=num(val('cfgVar')); cfg.varFloor=num(val('cfgFloor'));
+    this.saveAiCfg(cfg); this.viewReview();
+  },
+  onProviderChange(){
+    const p=val('aiProvider');
+    document.getElementById('aiModel').value = p==='anthropic'?'claude-sonnet-5':'gpt-4o';
+  },
+  saveKey(){
+    const cfg=this.aiCfg();
+    cfg.provider=val('aiProvider'); cfg.model=val('aiModel').trim(); cfg.key=val('aiKey').trim();
+    this.saveAiCfg(cfg); toast('AI settings saved to this browser');
+  },
+  buildPrompt(){
+    const tb=this.tbObj();
+    const rows=tb.accounts.map(a=>{
+      const adj=this.adjusted(a);
+      return `${a.number}\t${a.name}\t${a.type}\t${a.group||''}\tunadj=${a.unadj}\tadj=${adj}\tprior=${a.prior}`;
+    }).join('\n');
+    const r=this.ratioSet(true), ind=tb.industry||{};
+    const findings=this.computeAnomalies().map(f=>`- [${f.sev}] ${f.text.replace(/<[^>]+>/g,'')}`).join('\n');
+    return `You are a senior audit manager performing analytical procedures on a client trial balance. Review the data below and identify anomalies, unexpected relationships, and areas warranting further audit inquiry. Be specific and cite account numbers. Group your response into: (1) Highest-risk items, (2) Items to investigate, (3) Suggested follow-up questions for the client. Be concise.
+
+CLIENT: ${this.client().name}
+TRIAL BALANCE: ${tb.name} — period ending ${tb.periodEnd}
+Sign convention: debit balances positive, credit balances negative.
+
+ACCOUNTS (number, name, type, group, unadjusted, adjusted, prior-year):
+${rows}
+
+KEY RATIOS (current period): current=${r.current.toFixed(2)}, quick=${r.quick.toFixed(2)}, debt/equity=${r.de.toFixed(2)}, net margin=${(r.netmargin*100).toFixed(1)}%
+INDUSTRY BENCHMARKS: current=${ind.current||'n/a'}, quick=${ind.quick||'n/a'}, debt/equity=${ind.de||'n/a'}, net margin=${ind.netmargin?(ind.netmargin*100)+'%':'n/a'}
+
+RULES-BASED FINDINGS ALREADY IDENTIFIED:
+${findings||'(none)'}
+`;
+  },
+  copyPrompt(){
+    const p=this.buildPrompt();
+    navigator.clipboard.writeText(p).then(()=>toast('Prompt copied — paste into claude.ai or chatgpt.com'),
+      ()=>{ const t=document.createElement('textarea'); t.value=p; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); toast('Prompt copied'); });
+  },
+  async runAI(){
+    const cfg=this.aiCfg();
+    const provider=val('aiProvider'), model=val('aiModel').trim(), key=val('aiKey').trim();
+    if(!key){ toast('Enter an API key first'); return; }
+    cfg.provider=provider; cfg.model=model; cfg.key=key; this.saveAiCfg(cfg);
+    const out=document.getElementById('aiResult');
+    out.innerHTML=`<div class="ai-out">Contacting ${provider==='anthropic'?'Claude':'ChatGPT'}…</div>`;
+    const prompt=this.buildPrompt();
+    try{
+      let text;
+      if(provider==='anthropic'){
+        const res=await fetch('https://api.anthropic.com/v1/messages',{
+          method:'POST',
+          headers:{'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+          body:JSON.stringify({model:model||'claude-sonnet-5',max_tokens:1500,messages:[{role:'user',content:prompt}]})
+        });
+        const j=await res.json();
+        if(!res.ok) throw new Error(j.error?.message||('HTTP '+res.status));
+        text=(j.content||[]).map(c=>c.text).join('');
+      } else {
+        const res=await fetch('https://api.openai.com/v1/chat/completions',{
+          method:'POST',
+          headers:{'content-type':'application/json','authorization':'Bearer '+key},
+          body:JSON.stringify({model:model||'gpt-4o',messages:[{role:'user',content:prompt}]})
+        });
+        const j=await res.json();
+        if(!res.ok) throw new Error(j.error?.message||('HTTP '+res.status));
+        text=j.choices?.[0]?.message?.content||'(no response)';
+      }
+      out.innerHTML=`<div class="ai-out">${esc(text)}</div>
+        <div class="toolbar" style="margin-top:10px"><button class="btn sec sm" onclick="navigator.clipboard.writeText(App._lastAI||'');toast('Copied')">Copy result</button></div>`;
+      this._lastAI=text;
+    }catch(err){
+      out.innerHTML=`<div class="notice">AI review failed: ${esc(err.message)}<br><br>Common causes: invalid API key, no API credit/billing on the account, wrong model name, or the browser blocking the request (CORS/extension). You can use “Copy prompt” instead and paste into claude.ai or chatgpt.com directly.</div>`;
+    }
+  },
+
+  /* ================= TRIAL BALANCE REPORT ================= */
+  viewReports(){
+    const tb=this.tbObj(), t=this.totals();
+    const rows=tb.accounts.map(a=>{
+      const adj=this.adjusted(a), x=this.adjustments(a.number);
+      return `<tr>
+        <td>${esc(a.number)}</td><td>${esc(a.name)}</td>
+        <td class="num">${a.unadj>=0?money(a.unadj):''}</td>
+        <td class="num">${a.unadj<0?money(-a.unadj):''}</td>
+        <td class="num">${x.dr?money(x.dr):''}</td>
+        <td class="num">${x.cr?money(x.cr):''}</td>
+        <td class="num"><strong>${adj>=0?money(adj):''}</strong></td>
+        <td class="num"><strong>${adj<0?money(-adj):''}</strong></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Trial Balance Report</h2><div class="sub">${esc(this.client().name)} — ${esc(tb.name)} — Period ending ${esc(tb.periodEnd)}</div></div>
+        <div class="toolbar no-print"><button class="btn sec" onclick="window.print()">🖨 Print / PDF</button></div>
+      </div>
+      <div class="card"><div class="bd flush"><table>
+        <thead>
+          <tr><th rowspan="2">Acct</th><th rowspan="2">Account Name</th>
+            <th class="num" colspan="2">Unadjusted</th><th class="num" colspan="2">Adjustments</th><th class="num" colspan="2">Adjusted</th></tr>
+          <tr><th class="num">Debit</th><th class="num">Credit</th><th class="num">Debit</th><th class="num">Credit</th><th class="num">Debit</th><th class="num">Credit</th></tr>
+        </thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr style="background:#f8fafc;font-weight:700">
+          <td colspan="2">Totals</td>
+          <td class="num">${money(t.unadjDr)}</td><td class="num">${money(t.unadjCr)}</td>
+          <td class="num">${money(t.ajeDr)}</td><td class="num">${money(t.ajeCr)}</td>
+          <td class="num">${money(t.adjDr)}</td><td class="num">${money(t.adjCr)}</td>
+        </tr></tfoot>
+      </table></div></div>
+      <p class="muted" style="font-size:12px">Debits must equal credits in each column pair. Adjusted Dr ${money(t.adjDr)} vs Cr ${money(t.adjCr)} — ${Math.abs(t.adjDr-t.adjCr)<0.005?'in balance ✓':'OUT OF BALANCE'}.</p>
+    `;
+  },
+
+  /* ================= FINANCIAL STATEMENTS ================= */
+  viewStatements(){
+    this.stmtTab=this.stmtTab||'bs';
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Financial Statements</h2><div class="sub">Classified statements generated from account groupings</div></div>
+        <div class="toolbar no-print"><button class="btn sec" onclick="window.print()">🖨 Print / PDF</button></div>
+      </div>
+      <div class="pill-tabs no-print">
+        <button class="${this.stmtTab==='bs'?'active':''}" onclick="App.stmtTab='bs';App.viewStatements()">Balance Sheet</button>
+        <button class="${this.stmtTab==='is'?'active':''}" onclick="App.stmtTab='is';App.viewStatements()">Income Statement</button>
+      </div>
+      <div id="stmtBody"></div>`;
+    document.getElementById('stmtBody').innerHTML = this.stmtTab==='bs'? this.balanceSheet() : this.incomeStatement();
+  },
+  groupsByType(types){
+    const tb=this.tbObj(); const map={};
+    tb.accounts.filter(a=>types.includes(a.type)).forEach(a=>{
+      const g=a.group||'Other'; (map[g]=map[g]||[]).push(a);
+    });
+    return map;
+  },
+  balanceSheet(){
+    const tb=this.tbObj();
+    // Assets = debit-normal positive; Liab/Equity stored negative -> flip sign for presentation
+    const assetMap=this.groupsByType(['Asset']);
+    const liabMap=this.groupsByType(['Liability']);
+    const eqMap=this.groupsByType(['Equity']);
+    const rev=Math.abs(this.catSum(a=>a.type==='Revenue',true));
+    const exp=this.catSum(a=>a.type==='Expense',true);
+    const ni=rev-exp;
+    let totA=0,totL=0,totE=0;
+    const section=(map,flip)=>Object.keys(map).sort().map(g=>{
+      let sub=0; const lines=map[g].map(a=>{ const v=flip?-this.adjusted(a):this.adjusted(a); sub+=v;
+        return `<div class="fs-line"><span>${esc(a.name)}</span><span>${money(v)}</span></div>`; }).join('');
+      return {html:`<div class="fs-cat">${esc(g)}</div>${lines}<div class="fs-line sub"><span>Total ${esc(g)}</span><span>${money(sub)}</span></div>`, sub};
+    });
+    const aSec=section(assetMap,false); aSec.forEach(s=>totA+=s.sub);
+    const lSec=section(liabMap,true); lSec.forEach(s=>totL+=s.sub);
+    const eSec=section(eqMap,true); eSec.forEach(s=>totE+=s.sub);
+    const totEwithNI=totE+ni;
+    const balanced=Math.abs(totA-(totL+totEwithNI))<0.5;
+    return `<div class="card"><div class="bd" style="max-width:640px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:12px"><strong>${esc(this.client().name)}</strong><br>Balance Sheet<br><span class="muted">As of ${esc(tb.periodEnd)}</span></div>
+      <div class="fs-head">Assets</div>
+      ${aSec.map(s=>s.html).join('')}
+      <div class="fs-line total"><span>Total Assets</span><span>${money(totA)}</span></div>
+      <div class="fs-head">Liabilities</div>
+      ${lSec.map(s=>s.html).join('')}
+      <div class="fs-line sub"><span>Total Liabilities</span><span>${money(totL)}</span></div>
+      <div class="fs-head">Equity</div>
+      ${eSec.map(s=>s.html).join('')}
+      <div class="fs-line"><span>Current Year Net Income</span><span>${money(ni)}</span></div>
+      <div class="fs-line sub"><span>Total Equity</span><span>${money(totEwithNI)}</span></div>
+      <div class="fs-line total"><span>Total Liabilities &amp; Equity</span><span>${money(totL+totEwithNI)}</span></div>
+      <div style="text-align:center;margin-top:12px" class="balchip ${balanced?'ok':'bad'}">${balanced?'● Balance sheet balances':'● Does not balance — check groupings'}</div>
+    </div></div>`;
+  },
+  incomeStatement(){
+    const tb=this.tbObj();
+    const revMap=this.groupsByType(['Revenue']);
+    const expMap=this.groupsByType(['Expense']);
+    let totR=0,totX=0;
+    const rev=Object.keys(revMap).sort().map(g=>{
+      let sub=0; const lines=revMap[g].map(a=>{const v=-this.adjusted(a);sub+=v;
+        return `<div class="fs-line"><span>${esc(a.name)}</span><span>${money(v)}</span></div>`;}).join('');
+      totR+=sub; return `<div class="fs-cat">${esc(g)}</div>${lines}`;
+    }).join('');
+    const exp=Object.keys(expMap).sort().map(g=>{
+      let sub=0; const lines=expMap[g].map(a=>{const v=this.adjusted(a);sub+=v;
+        return `<div class="fs-line"><span>${esc(a.name)}</span><span>${money(v)}</span></div>`;}).join('');
+      totX+=sub; return `<div class="fs-cat">${esc(g)}</div>${lines}<div class="fs-line sub"><span>Total ${esc(g)}</span><span>${money(sub)}</span></div>`;
+    }).join('');
+    const ni=totR-totX;
+    return `<div class="card"><div class="bd" style="max-width:640px;margin:0 auto">
+      <div style="text-align:center;margin-bottom:12px"><strong>${esc(this.client().name)}</strong><br>Income Statement<br><span class="muted">For the period ending ${esc(tb.periodEnd)}</span></div>
+      <div class="fs-head">Revenue</div>${rev}
+      <div class="fs-line sub"><span>Total Revenue</span><span>${money(totR)}</span></div>
+      <div class="fs-head">Expenses</div>${exp}
+      <div class="fs-line sub"><span>Total Expenses</span><span>${money(totX)}</span></div>
+      <div class="fs-line total"><span>Net Income</span><span>${money(ni)}</span></div>
+    </div></div>`;
+  },
+
+  /* ================= IMPORT / EXPORT ================= */
+  viewIO(){
+    document.getElementById('main').innerHTML=`
+      <div class="page-head"><div><h2>Import / Export</h2><div class="sub">Move chart-of-accounts data in and out via CSV, and back up all data</div></div></div>
+      <div class="card"><div class="hd">Export Chart of Accounts (CSV)</div><div class="bd">
+        <p class="muted">Exports the current trial balance's accounts with adjusted balances.</p>
+        <button class="btn" onclick="App.exportCSV()">⭳ Download CSV</button>
+      </div></div>
+      <div class="card"><div class="hd">Import Chart of Accounts (CSV)</div><div class="bd">
+        <p class="muted">CSV columns: <code>number, name, type, unadjusted, prior, group</code>. Header row required. Imported accounts are appended to the current trial balance.</p>
+        <input type="file" id="csvFile" accept=".csv" onchange="App.importCSV(event)">
+      </div></div>
+      <div class="card"><div class="hd">Full Backup / Restore</div><div class="bd">
+        <p class="muted">Back up <strong>all clients and trial balances</strong> to a JSON file, or restore from one. Also available from the top bar.</p>
+        <button class="btn sec" onclick="App.backup()">⭳ Backup All Data</button>
+        <button class="btn sec" onclick="document.getElementById('restoreFile').click()">⭱ Restore</button>
+      </div></div>
+      <div class="card"><div class="hd" style="color:var(--warn)">Danger Zone</div><div class="bd">
+        <button class="btn danger" onclick="App.deleteTB()">Delete this Trial Balance</button>
+        <button class="btn danger" onclick="App.resetAll()">Reset ALL data</button>
+      </div></div>
+    `;
+  },
+  exportCSV(){
+    const tb=this.tbObj();
+    const rows=[['number','name','type','unadjusted','adjusted','prior','group']];
+    tb.accounts.forEach(a=>rows.push([a.number,a.name,a.type,a.unadj,this.adjusted(a),a.prior,a.group||'']));
+    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    dl(csv,`${slug(this.client().name)}_${slug(tb.name)}.csv`,'text/csv');
+    toast('CSV exported');
+  },
+  importCSV(ev){
+    const f=ev.target.files[0]; if(!f)return;
+    const r=new FileReader();
+    r.onload=e=>{
+      const tb=this.tbObj();
+      const lines=e.target.result.split(/\r?\n/).filter(x=>x.trim());
+      const hdr=parseCSVLine(lines[0]).map(h=>h.toLowerCase().trim());
+      const idx=n=>hdr.indexOf(n);
+      let count=0;
+      for(let i=1;i<lines.length;i++){
+        const c=parseCSVLine(lines[i]); if(!c.length||!c[idx('number')])continue;
+        let type=(c[idx('type')]||'Asset').trim();
+        type=ACCT_TYPES.find(t=>t.toLowerCase()===type.toLowerCase())||'Asset';
+        tb.accounts.push({id:uid(), number:c[idx('number')].trim(), name:(c[idx('name')]||'').trim(),
+          type, unadj:num(c[idx('unadjusted')]), prior:num(c[idx('prior')]||0), group:(c[idx('group')]||'').trim()});
+        count++;
+      }
+      tb.accounts.sort((x,y)=>String(x.number).localeCompare(String(y.number),undefined,{numeric:true}));
+      this.persist(); toast(count+' accounts imported'); this.tab('accounts');
+    };
+    r.readAsText(f); ev.target.value='';
+  },
+  backup(){ dl(JSON.stringify(this.data,null,2),'atb_backup_'+new Date().toISOString().slice(0,10)+'.json','application/json'); toast('Backup downloaded'); },
+  restore(ev){
+    const f=ev.target.files[0]; if(!f)return;
+    const r=new FileReader();
+    r.onload=e=>{ try{ const d=JSON.parse(e.target.result);
+      if(!d.clients)throw 0; this.data=d; this.persist(); this.renderSelectors(); this.tab('accounts'); toast('Data restored');
+    }catch(err){ toast('Invalid backup file'); } };
+    r.readAsText(f); ev.target.value='';
+  },
+  deleteTB(){
+    const c=this.client();
+    if(c.trialBalances.length<=1){ toast('Cannot delete the only trial balance'); return; }
+    if(!confirm('Delete trial balance "'+this.tbObj().name+'"?'))return;
+    c.trialBalances=c.trialBalances.filter(t=>t.id!==c.activeTB); c.activeTB=c.trialBalances[0].id;
+    this.persist(); this.renderSelectors(); this.tab('accounts');
+  },
+  resetAll(){ if(!confirm('This erases ALL clients and trial balances and restores demo data. Continue?'))return;
+    this.data=seed(); this.persist(); this.renderSelectors(); this.tab('accounts'); },
+
+  /* ================= CLIENTS / TBs ================= */
+  newClient(){
+    this.modal('New Client',`<div class="field"><label>Client Name</label><input id="c_name" placeholder="Acme Corporation"></div>`,[
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:'Create',cls:'',fn:()=>{
+        const name=val('c_name').trim(); if(!name){toast('Name required');return;}
+        const tbId=uid();
+        const c={id:uid(),name,activeTB:tbId,trialBalances:[{id:tbId,name:'FY'+new Date().getFullYear()+' Engagement',periodEnd:new Date().toISOString().slice(0,10),notes:'',accounts:[],journal:[],industry:{}}]};
+        this.data.clients.push(c); this.data.activeClient=c.id;
+        this.persist(); this.closeModal(); this.renderSelectors(); this.tab('accounts');
+      }}
+    ]);
+  },
+  newTB(){
+    const c=this.client();
+    const opts=c.trialBalances.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    this.modal('New Trial Balance',`
+      <div class="field"><label>Name</label><input id="t_name" placeholder="FY2026 Audit"></div>
+      <div class="field"><label>Period Ending</label><input id="t_date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      <div class="field"><label>Start from</label>
+        <select id="t_copy"><option value="">Blank trial balance</option>${opts}</select>
+        <span class="muted" style="font-size:12px">Copy an existing TB's chart of accounts (roll forward). Adjusted balances become the new unadjusted opening balances.</span>
+      </div>`,[
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:'Create',cls:'',fn:()=>{
+        const name=val('t_name').trim()||'New Trial Balance';
+        const src=val('t_copy');
+        const tb={id:uid(),name,periodEnd:val('t_date'),notes:'',accounts:[],journal:[],industry:{}};
+        if(src){ const s=c.trialBalances.find(t=>t.id===src);
+          tb.accounts=s.accounts.map(a=>({id:uid(),number:a.number,name:a.name,type:a.type,unadj:this.adjustedFor(s,a),prior:a.unadj,group:a.group}));
+          tb.industry={...s.industry};
+        }
+        c.trialBalances.push(tb); c.activeTB=tb.id;
+        this.persist(); this.closeModal(); this.renderSelectors(); this.tab('accounts');
+      }}
+    ]);
+  },
+  adjustedFor(tb,a){ let net=0; tb.journal.forEach(je=>je.lines.forEach(l=>{if(l.acct===a.number)net+=num(l.dr)-num(l.cr)})); return a.unadj+net; },
+
+  /* ================= MODAL PLUMBING ================= */
+  modal(title, body, buttons){
+    document.getElementById('modalBox').innerHTML=`
+      <div class="mhd"><h3>${esc(title)}</h3><button class="x" onclick="App.closeModal()">×</button></div>
+      <div class="mbd">${body}</div>
+      <div class="mft">${buttons.map((b,i)=>`<button class="btn ${b.cls}" data-b="${i}">${esc(b.label)}</button>`).join('')}</div>`;
+    document.getElementById('modalBg').classList.add('show');
+    buttons.forEach((b,i)=>document.querySelector(`[data-b="${i}"]`).onclick=b.fn);
+  },
+  closeModal(){ document.getElementById('modalBg').classList.remove('show'); document.getElementById('modalBox').innerHTML=''; },
+};
+
+/* ---------- helpers ---------- */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function val(id){ const e=document.getElementById(id); return e?e.value:''; }
+function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
+function dl(content,name,type){ const b=new Blob([content],{type}); const u=URL.createObjectURL(b);
+  const a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+function parseCSVLine(line){ const out=[]; let cur='',q=false;
+  for(let i=0;i<line.length;i++){ const ch=line[i];
+    if(q){ if(ch==='"'){ if(line[i+1]==='"'){cur+='"';i++} else q=false; } else cur+=ch; }
+    else { if(ch==='"')q=true; else if(ch===','){out.push(cur);cur=''} else cur+=ch; } }
+  out.push(cur); return out; }
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+App.init();
+</script>
+</body>
+</html>
