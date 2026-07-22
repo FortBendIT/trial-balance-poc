@@ -86,6 +86,14 @@
   .balchip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px}
   .balchip.ok{background:#ecfdf5;color:var(--ok)}
   .balchip.bad{background:#fef2f2;color:var(--warn)}
+  .stpill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.2px}
+  .stpill.active{background:#ecfdf5;color:#16a34a}
+  .stpill.inactive{background:#f1f5f9;color:#64748b}
+  .stpill.prospect{background:#eff6ff;color:#2563eb}
+  .stpill.archived{background:#fff7ed;color:#d97706}
+  tr.cli-row{cursor:pointer}
+  .cli-name{font-weight:600}
+  .cli-sub{font-size:12px;color:var(--muted);margin-top:2px}
 
   /* Modal */
   .modal-bg{position:fixed;inset:0;background:rgba(15,23,42,.5);display:none;align-items:flex-start;justify-content:center;z-index:60;padding:40px 16px;overflow:auto}
@@ -173,8 +181,10 @@
 
 <div class="wrap">
   <nav class="side">
+    <div class="navlabel">Firm</div>
+    <button class="tabbtn active" data-tab="clients" onclick="App.tab('clients')"><span class="ic">👥</span> Clients</button>
     <div class="navlabel">Engagement</div>
-    <button class="tabbtn active" data-tab="accounts" onclick="App.tab('accounts')"><span class="ic">▤</span> Chart of Accounts</button>
+    <button class="tabbtn" data-tab="accounts" onclick="App.tab('accounts')"><span class="ic">▤</span> Chart of Accounts</button>
     <button class="tabbtn" data-tab="journal" onclick="App.tab('journal')"><span class="ic">✎</span> Journal Entries</button>
     <button class="tabbtn" data-tab="grouping" onclick="App.tab('grouping')"><span class="ic">⊞</span> Account Grouping</button>
     <div class="navlabel">Analysis</div>
@@ -200,7 +210,7 @@
    Data model persisted to localStorage.
    ============================================================ */
 const store = {
-  key:'atb_internal_v2',
+  key:'atb_internal_v3',
   load(){
     try{ return JSON.parse(localStorage.getItem(this.key)) || null }catch(e){ return null }
   },
@@ -220,12 +230,16 @@ function seed(){
     activeClient:'c1',
     clients:[
       { id:'c1', name:'Sample Client, LLC', activeTB:tb0,
+        status:'Active', entityType:'LLC', engagement:'Audit', partner:'J. Ellis', fye:'12/31', since:'2019', notes:'',
         trialBalances:[ demoTB(tb0,'FY2025 Audit','2025-12-31') ] },
       { id:uid(), name:'Client A', activeTB:tbA,
+        status:'Active', entityType:'Corporation', engagement:'Review', partner:'M. Garza', fye:'12/31', since:'2021', notes:'',
         trialBalances:[ demoTB(tbA,'FY2025 Audit','2025-12-31') ] },
       { id:uid(), name:'Client B', activeTB:tbB,
+        status:'Inactive', entityType:'LLC', engagement:'Compilation', partner:'J. Ellis', fye:'12/31', since:'2022', notes:'Engagement on hold pending renewal.',
         trialBalances:[ starterTB(tbB,'FY2025 Engagement','2025-12-31') ] },
       { id:uid(), name:'Client C', activeTB:tbC,
+        status:'Prospect', entityType:'MUD', engagement:'Audit', partner:'Unassigned', fye:'09/30', since:'2026', notes:'New prospect — proposal sent.',
         trialBalances:[ emptyTB(tbC,'FY2025 Engagement','2025-12-31') ] }
     ]
   };
@@ -294,7 +308,7 @@ const App = {
   init(){
     this.data = store.load() || seed();
     this.renderSelectors();
-    this.tab('accounts');
+    this.tab('clients');
   },
   persist(){ store.save(this.data); },
 
@@ -314,7 +328,7 @@ const App = {
   tab(name){
     this.curTab=name;
     document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
-    ({accounts:this.viewAccounts, journal:this.viewJournal, grouping:this.viewGrouping,
+    ({clients:this.viewClients, accounts:this.viewAccounts, journal:this.viewJournal, grouping:this.viewGrouping,
       ratios:this.viewRatios, review:this.viewReview, reports:this.viewReports, statements:this.viewStatements,
       io:this.viewIO})[name].call(this);
   },
@@ -1056,18 +1070,114 @@ ${findings||'(none)'}
     this.data=seed(); this.persist(); this.renderSelectors(); this.tab('accounts'); },
 
   /* ================= CLIENTS / TBs ================= */
-  newClient(){
-    this.modal('New Client',`<div class="field"><label>Client Name</label><input id="c_name" placeholder="Acme Corporation"></div>`,[
+  tbTotalsFor(tb){
+    let dr=0,cr=0;
+    tb.accounts.forEach(a=>{ let net=0; tb.journal.forEach(je=>je.lines.forEach(l=>{if(l.acct===a.number)net+=num(l.dr)-num(l.cr)}));
+      const adj=a.unadj+net; if(adj>=0)dr+=adj; else cr+=-adj; });
+    return {dr,cr,bal:Math.abs(dr-cr)<0.005};
+  },
+  viewClients(){
+    const cs=this.data.clients;
+    const counts={Active:0,Inactive:0,Prospect:0,Archived:0}; let outOfBal=0;
+    cs.forEach(c=>{ const s=c.status||'Active'; counts[s]=(counts[s]||0)+1;
+      const tb=c.trialBalances.find(t=>t.id===c.activeTB)||c.trialBalances[0];
+      if(tb&&tb.accounts.length && !this.tbTotalsFor(tb).bal) outOfBal++; });
+    const rows=cs.map(c=>{
+      const tb=c.trialBalances.find(t=>t.id===c.activeTB)||c.trialBalances[0];
+      const nacc=tb?tb.accounts.length:0; const t=(tb&&nacc)?this.tbTotalsFor(tb):null;
+      const s=c.status||'Active'; const cur=c.id===this.data.activeClient;
+      const balCell = nacc ? (t.bal?'<span class="balchip ok">● In balance</span>':'<span class="balchip bad">● Out of balance</span>') : '<span class="muted">No data</span>';
+      const hay=(c.name+' '+(c.partner||'')+' '+(c.entityType||'')+' '+(c.engagement||'')).toLowerCase();
+      return `<tr class="cli-row" data-name="${esc(hay)}" data-status="${s}" onclick="App.openClient('${c.id}')">
+        <td><div class="cli-name">${esc(c.name)}${cur?' <span class="stpill active">current</span>':''}</div><div class="cli-sub">${esc(c.entityType||'—')} · client since ${esc(c.since||'—')}</div></td>
+        <td><span class="stpill ${s.toLowerCase()}">${s}</span></td>
+        <td>${esc(c.engagement||'—')}</td>
+        <td>${esc(c.partner||'—')}</td>
+        <td class="num">${esc(c.fye||'—')}</td>
+        <td class="num">${c.trialBalances.length}</td>
+        <td>${balCell}</td>
+        <td class="right" onclick="event.stopPropagation()"><span class="row-act">
+          <button class="btn sec sm" onclick="App.openClient('${c.id}')">Open</button>
+          <button class="btn sec sm" onclick="App.editClient('${c.id}')">Edit</button>
+        </span></td>
+      </tr>`;
+    }).join('');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Clients</h2><div class="sub">Practice roster — ${cs.length} client${cs.length!==1?'s':''}</div></div>
+        <div class="toolbar"><button class="btn" onclick="App.newClient()">+ New Client</button></div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">Total Clients</div><div class="val">${cs.length}</div></div>
+        <div class="stat"><div class="lbl">Active</div><div class="val" style="color:var(--ok)">${counts.Active||0}</div></div>
+        <div class="stat"><div class="lbl">Inactive</div><div class="val muted">${counts.Inactive||0}</div></div>
+        <div class="stat"><div class="lbl">Prospects</div><div class="val" style="color:var(--accent)">${counts.Prospect||0}</div></div>
+        <div class="stat"><div class="lbl">Out of Balance</div><div class="val" style="color:${outOfBal?'var(--warn)':'var(--ink)'}">${outOfBal}</div></div>
+      </div>
+      <div class="card">
+        <div class="hd"><div style="display:flex;gap:10px;align-items:center;font-weight:400">
+          <input id="cliSearch" oninput="App.filterClients()" placeholder="Search name, partner, entity…" style="padding:7px 11px;border:1px solid var(--line);border-radius:8px;width:260px">
+          <select id="cliStatus" onchange="App.filterClients()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px">
+            <option value="all">All statuses</option><option>Active</option><option>Inactive</option><option>Prospect</option><option>Archived</option>
+          </select>
+        </div></div>
+        <div class="bd flush"><table id="cliTable">
+          <thead><tr><th>Client</th><th>Status</th><th>Engagement</th><th>Partner / Lead</th><th class="num">FY End</th><th class="num">TBs</th><th>Latest TB</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </div>
+      <p class="muted" style="font-size:12px">Click any client row to open its trial balance. Use <b>Edit</b> to change status, engagement type, assigned partner, and more.</p>
+    `;
+  },
+  openClient(id){
+    this.data.activeClient=id; const c=this.client();
+    if(c && c.trialBalances.length && !c.trialBalances.find(t=>t.id===c.activeTB)) c.activeTB=c.trialBalances[0].id;
+    this.persist(); this.renderSelectors(); this.tab('accounts');
+  },
+  filterClients(){
+    const q=(val('cliSearch')||'').toLowerCase().trim(); const st=val('cliStatus')||'all';
+    document.querySelectorAll('#cliTable tbody tr').forEach(tr=>{
+      const nm=tr.getAttribute('data-name')||''; const s=tr.getAttribute('data-status');
+      const show=(!q||nm.indexOf(q)>=0)&&(st==='all'||s===st); tr.style.display=show?'':'none';
+    });
+  },
+  clientForm(id){
+    const c = id ? this.data.clients.find(x=>x.id===id)
+                 : {name:'',status:'Active',entityType:'',engagement:'Audit',partner:'',fye:'12/31',since:String(new Date().getFullYear()),notes:''};
+    const sel=(cur,opts)=>opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('');
+    this.modal(`${id?'Edit':'New'} Client`,`
+      <div class="field"><label>Client Name</label><input id="c_name" value="${esc(c.name)}" placeholder="Acme Corporation"></div>
+      <div class="grid2">
+        <div class="field"><label>Status</label><select id="c_status">${sel(c.status||'Active',['Active','Inactive','Prospect','Archived'])}</select></div>
+        <div class="field"><label>Engagement</label><select id="c_eng">${sel(c.engagement||'Audit',['Audit','Review','Compilation','Tax','Bookkeeping','Advisory'])}</select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Entity Type</label><input id="c_entity" value="${esc(c.entityType||'')}" placeholder="LLC, MUD, Corporation"></div>
+        <div class="field"><label>Partner / Lead</label><input id="c_partner" value="${esc(c.partner||'')}" placeholder="J. Ellis"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Fiscal Year End</label><input id="c_fye" value="${esc(c.fye||'')}" placeholder="12/31"></div>
+        <div class="field"><label>Client Since</label><input id="c_since" value="${esc(c.since||'')}" placeholder="2024"></div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="c_notes" rows="2" placeholder="Internal notes…">${esc(c.notes||'')}</textarea></div>
+    `,[
       {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
-      {label:'Create',cls:'',fn:()=>{
+      {label:id?'Save':'Create',cls:'',fn:()=>{
         const name=val('c_name').trim(); if(!name){toast('Name required');return;}
-        const tbId=uid();
-        const c={id:uid(),name,activeTB:tbId,trialBalances:[{id:tbId,name:'FY'+new Date().getFullYear()+' Engagement',periodEnd:new Date().toISOString().slice(0,10),notes:'',accounts:[],journal:[],industry:{}}]};
-        this.data.clients.push(c); this.data.activeClient=c.id;
-        this.persist(); this.closeModal(); this.renderSelectors(); this.tab('accounts');
+        const fields={ name, status:val('c_status'), engagement:val('c_eng'), entityType:val('c_entity').trim(),
+          partner:val('c_partner').trim(), fye:val('c_fye').trim(), since:val('c_since').trim(), notes:val('c_notes').trim() };
+        if(id){ Object.assign(c, fields); this.persist(); this.closeModal(); this.renderSelectors(); this.viewClients(); }
+        else {
+          const tbId=uid();
+          const nc={id:uid(), ...fields, activeTB:tbId, trialBalances:[{id:tbId,name:'FY'+new Date().getFullYear()+' Engagement',periodEnd:new Date().toISOString().slice(0,10),notes:'',accounts:[],journal:[],industry:{}}]};
+          this.data.clients.push(nc); this.data.activeClient=nc.id;
+          this.persist(); this.closeModal(); this.renderSelectors(); this.viewClients();
+        }
       }}
     ]);
   },
+  newClient(){ this.clientForm(); },
+  editClient(id){ this.clientForm(id); },
   newTB(){
     const c=this.client();
     const opts=c.trialBalances.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
