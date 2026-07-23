@@ -186,6 +186,8 @@
   <nav class="side">
     <div class="navlabel">Firm</div>
     <button class="tabbtn active" data-tab="clients" onclick="App.tab('clients')"><span class="ic">👥</span> Clients</button>
+    <button class="tabbtn" data-tab="time" onclick="App.tab('time')"><span class="ic">⏱</span> Time Tracking</button>
+    <button class="tabbtn" data-tab="admin" onclick="App.tab('admin')"><span class="ic">⚙</span> Admin</button>
     <div class="navlabel">Engagement</div>
     <button class="tabbtn" data-tab="accounts" onclick="App.tab('accounts')"><span class="ic">▤</span> Chart of Accounts</button>
     <button class="tabbtn" data-tab="journal" onclick="App.tab('journal')"><span class="ic">✎</span> Journal Entries</button>
@@ -213,7 +215,7 @@
    Data model persisted to localStorage.
    ============================================================ */
 const store = {
-  key:'atb_internal_v3',
+  key:'atb_internal_v4',
   load(){
     try{ return JSON.parse(localStorage.getItem(this.key)) || null }catch(e){ return null }
   },
@@ -222,6 +224,10 @@ const store = {
 
 const ACCT_TYPES = ['Asset','Liability','Equity','Revenue','Expense'];
 const NORMAL_DEBIT = {Asset:1, Expense:1, Liability:-1, Equity:-1, Revenue:-1};
+const ROLES = ['Admin','Manager','Staff','Read-only'];
+const ACTIVITIES = ['Audit Fieldwork','Planning','Review','Financial Statement Prep','Tax Prep','Client Meeting','Research','Admin','Travel'];
+const usd = n => '$' + Math.round(n).toLocaleString('en-US');
+const hrs = n => (Math.round(n*100)/100).toFixed(2);
 const money = n => (n<0?'(' : '') + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + (n<0?')':'');
 const uid = () => Math.random().toString(36).slice(2,9);
 const num = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); return isNaN(n)?0:n; };
@@ -229,19 +235,36 @@ const num = v => { const n = parseFloat(String(v).replace(/[^0-9.\-]/g,'')); ret
 /* -------- seed data (generic demo client) -------- */
 function seed(){
   const tb0=uid(), tbA=uid(), tbB=uid(), tbC=uid();
+  const cA=uid(), cB=uid(), cC=uid();
+  const d=off=>{const x=new Date();x.setDate(x.getDate()-off);return x.toISOString().slice(0,10);};
   return {
-    activeClient:'c1',
+    activeClient:'c1', currentUser:'u1',
+    users:[
+      {id:'u1', name:'Joseph Ellis', email:'jellis@mgsbe.com', role:'Admin', rate:250, status:'Active'},
+      {id:'u2', name:'Maria Garza', email:'mgarza@mgsbe.com', role:'Manager', rate:195, status:'Active'},
+      {id:'u3', name:'Ashlee Martin', email:'amartin@mgsbe.com', role:'Staff', rate:145, status:'Active'}
+    ],
+    timeEntries:[
+      {id:uid(), date:d(1), userId:'u3', clientId:'c1', activity:'Audit Fieldwork', hours:6, billable:true, notes:'Cash & A/R testing'},
+      {id:uid(), date:d(1), userId:'u1', clientId:'c1', activity:'Review', hours:1.5, billable:true, notes:'Partner review'},
+      {id:uid(), date:d(2), userId:'u2', clientId:cA, activity:'Review', hours:2, billable:true, notes:'Analytical review'},
+      {id:uid(), date:d(2), userId:'u3', clientId:cA, activity:'Financial Statement Prep', hours:4, billable:true, notes:''},
+      {id:uid(), date:d(3), userId:'u1', clientId:cB, activity:'Client Meeting', hours:1, billable:false, notes:'Renewal discussion'},
+      {id:uid(), date:d(3), userId:'u3', clientId:'c1', activity:'Planning', hours:2.5, billable:true, notes:''},
+      {id:uid(), date:d(4), userId:'u2', clientId:'c1', activity:'Review', hours:1.5, billable:true, notes:'Manager review'},
+      {id:uid(), date:d(0), userId:'u3', clientId:cA, activity:'Admin', hours:0.5, billable:false, notes:'Timesheet & filing'}
+    ],
     clients:[
       { id:'c1', name:'Sample Client, LLC', activeTB:tb0,
         status:'Active', entityType:'LLC', engagement:'Audit', partner:'J. Ellis', fye:'12/31', since:'2019', notes:'',
         trialBalances:[ demoTB(tb0,'FY2025 Audit','2025-12-31') ] },
-      { id:uid(), name:'Client A', activeTB:tbA,
+      { id:cA, name:'Client A', activeTB:tbA,
         status:'Active', entityType:'Corporation', engagement:'Review', partner:'M. Garza', fye:'12/31', since:'2021', notes:'',
         trialBalances:[ demoTB(tbA,'FY2025 Audit','2025-12-31') ] },
-      { id:uid(), name:'Client B', activeTB:tbB,
+      { id:cB, name:'Client B', activeTB:tbB,
         status:'Inactive', entityType:'LLC', engagement:'Compilation', partner:'J. Ellis', fye:'12/31', since:'2022', notes:'Engagement on hold pending renewal.',
         trialBalances:[ starterTB(tbB,'FY2025 Engagement','2025-12-31') ] },
-      { id:uid(), name:'Client C', activeTB:tbC,
+      { id:cC, name:'Client C', activeTB:tbC,
         status:'Prospect', entityType:'MUD', engagement:'Audit', partner:'Unassigned', fye:'09/30', since:'2026', notes:'New prospect — proposal sent.',
         trialBalances:[ emptyTB(tbC,'FY2025 Engagement','2025-12-31') ] }
     ]
@@ -331,7 +354,7 @@ const App = {
   tab(name){
     this.curTab=name;
     document.querySelectorAll('.tabbtn').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
-    ({clients:this.viewClients, accounts:this.viewAccounts, journal:this.viewJournal, grouping:this.viewGrouping,
+    ({clients:this.viewClients, time:this.viewTime, admin:this.viewAdmin, accounts:this.viewAccounts, journal:this.viewJournal, grouping:this.viewGrouping,
       ratios:this.viewRatios, review:this.viewReview, reports:this.viewReports, statements:this.viewStatements,
       io:this.viewIO})[name].call(this);
   },
@@ -1181,6 +1204,195 @@ ${findings||'(none)'}
   },
   newClient(){ this.clientForm(); },
   editClient(id){ this.clientForm(id); },
+
+  /* ================= STAFF / TIME / ADMIN ================= */
+  userById(id){ return (this.data.users||[]).find(u=>u.id===id); },
+  userName(id){ const u=this.userById(id); return u?u.name:'—'; },
+  userRate(id){ const u=this.userById(id); return u?num(u.rate):0; },
+  clientNameById(id){ const c=this.data.clients.find(x=>x.id===id); return c?c.name:'—'; },
+
+  viewTime(){
+    const d=this.data;
+    const acting=d.currentUser || (d.users[0] && d.users[0].id);
+    this._tClient=this._tClient||'all'; const showAll=!!this._tShowAll;
+    let entries=(d.timeEntries||[]).slice().sort((a,b)=>b.date.localeCompare(a.date));
+    if(!showAll) entries=entries.filter(e=>e.userId===acting);
+    if(this._tClient!=='all') entries=entries.filter(e=>e.clientId===this._tClient);
+    let bh=0,nh=0,amt=0;
+    entries.forEach(e=>{ const h=num(e.hours); if(e.billable){bh+=h; amt+=h*this.userRate(e.userId);} else nh+=h; });
+    const rows=entries.map(e=>`<tr>
+      <td>${esc(e.date)}</td>
+      ${showAll?`<td>${esc(this.userName(e.userId))}</td>`:''}
+      <td>${esc(this.clientNameById(e.clientId))}</td>
+      <td>${esc(e.activity)}</td>
+      <td class="num">${hrs(e.hours)}</td>
+      <td>${e.billable?'<span class="stpill active">Billable</span>':'<span class="stpill inactive">Non-bill</span>'}</td>
+      <td class="num">${e.billable?usd(num(e.hours)*this.userRate(e.userId)):'<span class="muted">—</span>'}</td>
+      <td class="right"><span class="row-act"><button class="btn sec sm" onclick="App.timeForm('${e.id}')">Edit</button><button class="btn danger sm" onclick="App.delTime('${e.id}')">✕</button></span></td>
+    </tr>`).join('');
+    const userOpts=d.users.map(u=>`<option value="${u.id}" ${u.id===acting?'selected':''}>${esc(u.name)}</option>`).join('');
+    const cliOpts='<option value="all">All clients</option>'+d.clients.map(c=>`<option value="${c.id}" ${c.id===this._tClient?'selected':''}>${esc(c.name)}</option>`).join('');
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Time Tracking</h2><div class="sub">Log billable &amp; non-billable hours by client and activity</div></div>
+        <div class="toolbar">
+          <label class="muted" style="font-size:12px">Acting as
+            <select onchange="App.setActingUser(this.value)" style="padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin-left:4px">${userOpts}</select></label>
+          <button class="btn" onclick="App.timeForm()">+ Log Time</button>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">Billable Hours</div><div class="val" style="color:var(--ok)">${hrs(bh)}</div></div>
+        <div class="stat"><div class="lbl">Non-billable</div><div class="val muted">${hrs(nh)}</div></div>
+        <div class="stat"><div class="lbl">Total Hours</div><div class="val">${hrs(bh+nh)}</div></div>
+        <div class="stat"><div class="lbl">Billable Value (WIP)</div><div class="val small">${usd(amt)}</div></div>
+      </div>
+      <div class="card"><div class="hd"><div style="display:flex;gap:10px;align-items:center;font-weight:400">
+        <select onchange="App._tClient=this.value;App.viewTime()" style="padding:7px 10px;border:1px solid var(--line);border-radius:8px">${cliOpts}</select>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px"><input type="checkbox" ${showAll?'checked':''} onchange="App._tShowAll=this.checked;App.viewTime()"> Show all staff</label>
+      </div></div>
+      <div class="bd flush"><table>
+        <thead><tr><th>Date</th>${showAll?'<th>Employee</th>':''}<th>Client</th><th>Activity</th><th class="num">Hours</th><th>Type</th><th class="num">Value</th><th></th></tr></thead>
+        <tbody>${rows || `<tr><td colspan="8"><div class="empty"><div class="big">⏱</div>No time logged yet.</div></td></tr>`}</tbody>
+      </table></div></div>
+      <p class="muted" style="font-size:12px">Mirrors CCH ProSystem fx time entry (staff · client · activity · billable hours). In the real backend each employee sees only their own entries; admins run reports across all.</p>
+    `;
+  },
+  setActingUser(id){ this.data.currentUser=id; this.persist(); this.viewTime(); },
+  timeForm(id){
+    const d=this.data;
+    const e = id ? d.timeEntries.find(x=>x.id===id)
+                 : {date:new Date().toISOString().slice(0,10), userId:d.currentUser, clientId:(d.clients[0]||{}).id, activity:'Audit Fieldwork', hours:'', billable:true, notes:''};
+    const uOpts=d.users.map(u=>`<option value="${u.id}" ${u.id===e.userId?'selected':''}>${esc(u.name)}</option>`).join('');
+    const cOpts=d.clients.map(c=>`<option value="${c.id}" ${c.id===e.clientId?'selected':''}>${esc(c.name)}</option>`).join('');
+    const aOpts=ACTIVITIES.map(a=>`<option ${a===e.activity?'selected':''}>${a}</option>`).join('');
+    this.modal(`${id?'Edit':'Log'} Time`,`
+      <div class="grid2">
+        <div class="field"><label>Date</label><input id="t_date" type="date" value="${esc(e.date)}"></div>
+        <div class="field"><label>Employee</label><select id="t_user">${uOpts}</select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Client</label><select id="t_client">${cOpts}</select></div>
+        <div class="field"><label>Activity</label><select id="t_act">${aOpts}</select></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Hours</label><input id="t_hours" value="${e.hours||''}" placeholder="e.g. 2.5"></div>
+        <div class="field"><label>Type</label><select id="t_bill"><option value="yes" ${e.billable?'selected':''}>Billable</option><option value="no" ${!e.billable?'selected':''}>Non-billable</option></select></div>
+      </div>
+      <div class="field"><label>Notes</label><input id="t_notes" value="${esc(e.notes||'')}" placeholder="Description of work"></div>
+    `,[
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:id?'Save':'Log',cls:'',fn:()=>{
+        const rec={date:val('t_date'), userId:val('t_user'), clientId:val('t_client'), activity:val('t_act'), hours:num(val('t_hours')), billable:val('t_bill')==='yes', notes:val('t_notes').trim()};
+        if(!rec.hours){toast('Enter hours');return;}
+        if(id){Object.assign(e,rec);}else{d.timeEntries.push({id:uid(),...rec});}
+        this.persist(); this.closeModal(); this.viewTime();
+      }}
+    ]);
+  },
+  delTime(id){ if(!confirm('Delete this time entry?'))return; this.data.timeEntries=this.data.timeEntries.filter(x=>x.id!==id); this.persist(); this.viewTime(); },
+
+  timeAgg(){
+    const d=this.data; const from=this._repFrom||'', to=this._repTo||'';
+    const ok=e=>(!from||e.date>=from)&&(!to||e.date<=to);
+    const byUser={}, byClient={};
+    (d.timeEntries||[]).filter(ok).forEach(e=>{
+      const h=num(e.hours), amt=e.billable?h*this.userRate(e.userId):0;
+      const u=byUser[e.userId]=byUser[e.userId]||{h:0,bh:0,nh:0,amt:0};
+      u.h+=h; if(e.billable){u.bh+=h;u.amt+=amt;}else u.nh+=h;
+      const c=byClient[e.clientId]=byClient[e.clientId]||{h:0,bh:0,amt:0,staff:new Set()};
+      c.h+=h; c.staff.add(e.userId); if(e.billable){c.bh+=h;c.amt+=amt;}
+    });
+    return {byUser, byClient};
+  },
+  viewAdmin(){
+    this.adminTab=this.adminTab||'users';
+    document.getElementById('main').innerHTML=`
+      <div class="page-head">
+        <div><h2>Admin</h2><div class="sub">Manage staff accounts &amp; run time reports across clients</div></div>
+        <div class="toolbar">${this.adminTab==='users'?'<button class="btn" onclick="App.userForm()">+ New User</button>':'<button class="btn sec" onclick="App.exportTimeCSV()">⭳ Export CSV</button>'}</div>
+      </div>
+      <div class="pill-tabs">
+        <button class="${this.adminTab==='users'?'active':''}" onclick="App.adminTab='users';App.viewAdmin()">Users &amp; Roles</button>
+        <button class="${this.adminTab==='reports'?'active':''}" onclick="App.adminTab='reports';App.viewAdmin()">Time Reports</button>
+      </div>
+      <div id="adminBody"></div>`;
+    document.getElementById('adminBody').innerHTML = this.adminTab==='users'? this.adminUsers() : this.adminReports();
+  },
+  adminUsers(){
+    const d=this.data; const agg=this.timeAgg().byUser;
+    const rows=d.users.map(u=>{
+      const a=agg[u.id]||{h:0,bh:0,amt:0};
+      return `<tr>
+        <td><div class="cli-name">${esc(u.name)}</div><div class="cli-sub">${esc(u.email)}</div></td>
+        <td><span class="stpill ${(u.status||'Active').toLowerCase()}">${u.role}</span></td>
+        <td class="num">${usd(num(u.rate))}/hr</td>
+        <td><span class="stpill ${(u.status||'Active').toLowerCase()==='active'?'active':'inactive'}">${u.status||'Active'}</span></td>
+        <td class="num">${hrs(a.h)}</td>
+        <td class="num">${usd(a.amt)}</td>
+        <td class="right"><span class="row-act"><button class="btn sec sm" onclick="App.userForm('${u.id}')">Edit</button></span></td>
+      </tr>`;
+    }).join('');
+    return `<div class="card"><div class="bd flush"><table>
+      <thead><tr><th>Name</th><th>Role</th><th class="num">Rate</th><th>Status</th><th class="num">Hours (period)</th><th class="num">Billable $</th><th></th></tr></thead>
+      <tbody>${rows}</tbody></table></div></div>
+      <p class="muted" style="font-size:12px">Roles: Admin (full access + user management), Manager (assigned clients + reports), Staff (time + assigned engagements), Read-only. Enforcement becomes real once the backend is live.</p>`;
+  },
+  adminReports(){
+    const d=this.data; const {byUser,byClient}=this.timeAgg();
+    const uRows=d.users.map(u=>{ const a=byUser[u.id]||{h:0,bh:0,nh:0,amt:0};
+      return `<tr><td>${esc(u.name)}</td><td>${esc(u.role)}</td><td class="num">${hrs(a.bh)}</td><td class="num">${hrs(a.nh)}</td><td class="num">${hrs(a.h)}</td><td class="num">${usd(a.amt)}</td></tr>`;
+    }).join('');
+    const cRows=d.clients.map(c=>{ const a=byClient[c.id]; if(!a)return '';
+      return `<tr><td>${esc(c.name)}</td><td class="num">${hrs(a.bh)}</td><td class="num">${hrs(a.h)}</td><td class="num">${a.staff.size}</td><td class="num">${usd(a.amt)}</td></tr>`;
+    }).join('');
+    return `
+      <div class="card"><div class="hd"><div style="display:flex;gap:10px;align-items:center;font-weight:400">
+        <label style="font-size:12px">From <input id="repFrom" type="date" value="${esc(this._repFrom||'')}" style="padding:5px;border:1px solid var(--line);border-radius:6px"></label>
+        <label style="font-size:12px">To <input id="repTo" type="date" value="${esc(this._repTo||'')}" style="padding:5px;border:1px solid var(--line);border-radius:6px"></label>
+        <button class="btn sec sm" onclick="App._repFrom=val('repFrom');App._repTo=val('repTo');App.viewAdmin()">Apply</button>
+        <button class="btn sec sm" onclick="App._repFrom='';App._repTo='';App.viewAdmin()">Clear</button>
+      </div></div></div>
+      <div class="card"><div class="hd">Time by Employee</div><div class="bd flush"><table>
+        <thead><tr><th>Employee</th><th>Role</th><th class="num">Billable</th><th class="num">Non-bill</th><th class="num">Total</th><th class="num">Billable $</th></tr></thead>
+        <tbody>${uRows}</tbody></table></div></div>
+      <div class="card"><div class="hd">Time by Client</div><div class="bd flush"><table>
+        <thead><tr><th>Client</th><th class="num">Billable Hrs</th><th class="num">Total Hrs</th><th class="num">Staff</th><th class="num">Billable $ (WIP)</th></tr></thead>
+        <tbody>${cRows || '<tr><td colspan="5"><div class="empty muted" style="padding:24px">No time in range.</div></td></tr>'}</tbody></table></div></div>`;
+  },
+  exportTimeCSV(){
+    const d=this.data; const from=this._repFrom||'', to=this._repTo||'';
+    const rows=[['date','employee','client','activity','hours','billable','rate','amount']];
+    (d.timeEntries||[]).filter(e=>(!from||e.date>=from)&&(!to||e.date<=to)).sort((a,b)=>a.date.localeCompare(b.date)).forEach(e=>{
+      const h=num(e.hours), rate=this.userRate(e.userId), amt=e.billable?h*rate:0;
+      rows.push([e.date,this.userName(e.userId),this.clientNameById(e.clientId),e.activity,h,e.billable?'Y':'N',rate,amt]);
+    });
+    const csv=rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    dl(csv,'time_report.csv','text/csv'); toast('Time report exported');
+  },
+  userForm(id){
+    const d=this.data;
+    const u = id ? d.users.find(x=>x.id===id) : {name:'',email:'',role:'Staff',rate:150,status:'Active'};
+    const sel=(cur,opts)=>opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join('');
+    this.modal(`${id?'Edit':'New'} User`,`
+      <div class="field"><label>Full Name</label><input id="u_name" value="${esc(u.name)}" placeholder="Jane Smith"></div>
+      <div class="field"><label>Email</label><input id="u_email" value="${esc(u.email)}" placeholder="jsmith@mgsbe.com"></div>
+      <div class="grid2">
+        <div class="field"><label>Role</label><select id="u_role">${sel(u.role||'Staff',ROLES)}</select></div>
+        <div class="field"><label>Status</label><select id="u_status">${sel(u.status||'Active',['Active','Inactive'])}</select></div>
+      </div>
+      <div class="field"><label>Billing Rate ($/hr)</label><input id="u_rate" value="${u.rate||''}" placeholder="150"></div>
+    `,[
+      ...(id?[{label:'Delete',cls:'danger',fn:()=>{ if(confirm('Remove this user?')){ d.users=d.users.filter(x=>x.id!==id); this.persist(); this.closeModal(); this.viewAdmin(); } }}]:[]),
+      {label:'Cancel',cls:'sec',fn:()=>this.closeModal()},
+      {label:id?'Save':'Create',cls:'',fn:()=>{
+        const name=val('u_name').trim(); if(!name){toast('Name required');return;}
+        const rec={name, email:val('u_email').trim(), role:val('u_role'), status:val('u_status'), rate:num(val('u_rate'))};
+        if(id){Object.assign(u,rec);}else{d.users.push({id:uid(),...rec});}
+        this.persist(); this.closeModal(); this.viewAdmin();
+      }}
+    ]);
+  },
   newTB(){
     const c=this.client();
     const opts=c.trialBalances.map(t=>`<option value="${t.id}">${esc(t.name)}</option>`).join('');
